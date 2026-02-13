@@ -1,0 +1,45 @@
+{
+  "name": "@mahdy-gribkov/arcana",
+  "version": "2.0.0",
+  "description": "Universal agent skill package manager. Install skills from multiple sources into any AI coding tool.",
+  "bin": {
+    "arcana": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "agent-skills",
+    "claude",
+    "cursor",
+    "codex",
+    "ai",
+    "skills",
+    "cli"
+  ],
+  "license": "MIT",
+  "author": "Mahdy Gribkov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mahdy-gribkov/arcana"
+  },
+  "homepage": "https://mahdygribkov.vercel.app",
+  "files": [
+    "dist/**/*"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  }
+}

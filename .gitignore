@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.pyo
 .claude/
+cli/node_modules/
+cli/dist/
