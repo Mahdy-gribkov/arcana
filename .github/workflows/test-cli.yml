@@ -23,9 +23,24 @@ jobs:
       - run: npx tsc --noEmit
         working-directory: cli
 
-  smoke:
+  unit-tests:
     runs-on: ubuntu-latest
     needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci
+        working-directory: cli
+      - run: npm test
+        working-directory: cli
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: [typecheck, unit-tests]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -1,0 +1,60 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: cli
+      - run: npm audit --audit-level=moderate
+        working-directory: cli
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for leaked secrets and paths
+        run: |
+          FOUND=0
+
+          echo "=== Checking for hardcoded paths ==="
+          if grep -rn --include="*.ts" --include="*.md" --include="*.json" \
+            -e '/Users/' -e '/home/' -e 'C:\\Users\\' -e '/c/Users/' \
+            --exclude-dir=node_modules --exclude-dir=dist \
+            --exclude="package-lock.json" \
+            --exclude="CHANGELOG.md" \
+            --exclude=".claude*" . ; then
+            echo "::error::Hardcoded paths found in source files"
+            FOUND=1
+          fi
+
+          echo "=== Checking for secret patterns ==="
+          if grep -rn --include="*.ts" --include="*.md" --include="*.json" \
+            -e 'PRIVATE KEY' -e 'sk-[a-zA-Z0-9]' -e 'ghp_[a-zA-Z0-9]' \
+            -e 'npm_[a-zA-Z0-9]' -e 'password.*=.*["\x27][^"\x27]' \
+            --exclude-dir=node_modules --exclude-dir=dist \
+            --exclude="package-lock.json" \
+            --exclude="SECURITY.md" \
+            --exclude="CONTRIBUTING.md" \
+            --exclude="*.test.ts" . ; then
+            echo "::error::Potential secrets found in source files"
+            FOUND=1
+          fi
+
+          if [ "$FOUND" -eq 1 ]; then
+            echo "Security scan failed. Review findings above."
+            exit 1
+          fi
+          echo "Security scan passed."
