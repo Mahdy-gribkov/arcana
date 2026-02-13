@@ -1,9 +1,8 @@
 import { createInterface } from "node:readline/promises";
-import { existsSync, rmSync, readdirSync, lstatSync, readlinkSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
-import { homedir } from "node:os";
+import { existsSync, rmSync } from "node:fs";
+import { resolve, sep } from "node:path";
 import { stdin, stdout } from "node:process";
-import { getInstallDir } from "../utils/fs.js";
+import { getSkillDir, listSymlinks } from "../utils/fs.js";
 import { ui, banner } from "../utils/ui.js";
 
 export async function uninstallCommand(
@@ -12,8 +11,7 @@ export async function uninstallCommand(
 ): Promise<void> {
   banner();
 
-  const installDir = getInstallDir();
-  const skillDir = join(installDir, skillName);
+  const skillDir = getSkillDir(skillName);
 
   if (!existsSync(skillDir)) {
     console.log(ui.error(`  Skill "${skillName}" is not installed.`));
@@ -41,25 +39,17 @@ export async function uninstallCommand(
 
   // Remove any symlinks in ~/.claude/skills/ pointing to this skill
   let symlinksRemoved = 0;
-  const symlinkDir = join(homedir(), ".claude", "skills");
-  if (existsSync(symlinkDir)) {
-    for (const entry of readdirSync(symlinkDir)) {
-      const fullPath = join(symlinkDir, entry);
-      try {
-        const stat = lstatSync(fullPath);
-        if (stat.isSymbolicLink()) {
-          const target = readlinkSync(fullPath);
-          const normalizedTarget = resolve(target);
-          const expectedTarget = resolve(join(getInstallDir(), skillName));
-          if (normalizedTarget === expectedTarget || normalizedTarget.startsWith(expectedTarget + sep)) {
-            rmSync(fullPath);
-            symlinksRemoved++;
-          }
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(ui.warn(`  Could not remove symlink ${entry}: ${msg}`));
+  const expectedTarget = resolve(getSkillDir(skillName));
+  for (const link of listSymlinks()) {
+    try {
+      const normalizedTarget = resolve(link.target);
+      if (normalizedTarget === expectedTarget || normalizedTarget.startsWith(expectedTarget + sep)) {
+        rmSync(link.fullPath);
+        symlinksRemoved++;
       }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(ui.warn(`  Could not remove symlink ${link.name}: ${msg}`));
     }
   }
 

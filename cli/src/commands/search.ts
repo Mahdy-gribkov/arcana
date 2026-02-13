@@ -1,4 +1,4 @@
-import { ui, banner, spinner, table, getErrorHint } from "../utils/ui.js";
+import { ui, banner, spinner, table, printErrorWithHint } from "../utils/ui.js";
 import { isSkillInstalled } from "../utils/fs.js";
 import { getProviders } from "../registry.js";
 
@@ -33,8 +33,7 @@ export async function searchCommand(
     }
   } catch (err) {
     s.fail("Search failed due to a network or provider error.");
-    const hint = getErrorHint(err);
-    if (hint) console.error(ui.dim(`  Hint: ${hint}`));
+    printErrorWithHint(err);
     throw err;
   }
 

@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, rmSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, rmSync, renameSync, lstatSync, readlinkSync } from "node:fs";
+import { join, dirname, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import type { SkillFile, SkillMeta } from "../types.js";
 import { loadConfig } from "../utils/config.js";
@@ -7,6 +7,10 @@ import { atomicWriteSync } from "./atomic.js";
 
 export function getInstallDir(): string {
   return loadConfig().installDir;
+}
+
+export function getSkillDir(name: string): string {
+  return join(getInstallDir(), name);
 }
 
 export function getDirSize(dir: string): number {
@@ -42,12 +46,15 @@ export function installSkill(skillName: string, files: SkillFile[]): string {
 
   try {
     for (const file of files) {
-      const filePath = join(tempDir, file.path);
+      const filePath = resolve(tempDir, file.path);
+      if (!filePath.startsWith(tempDir + sep) && filePath !== tempDir) {
+        throw new Error(`Path traversal blocked: ${file.path}`);
+      }
       const dir = dirname(filePath);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
-      writeFileSync(filePath, file.content, "utf-8");
+      writeFileSync(filePath, file.content, { encoding: "utf-8", mode: 0o644 });
     }
 
     // Remove old skill dir if it exists, then atomically rename temp to final
@@ -65,14 +72,13 @@ export function installSkill(skillName: string, files: SkillFile[]): string {
 }
 
 export function isSkillInstalled(skillName: string): boolean {
-  const skillDir = join(getInstallDir(), skillName);
-  return existsSync(join(skillDir, "SKILL.md"));
+  return existsSync(join(getSkillDir(skillName), "SKILL.md"));
 }
 
 const META_FILE = ".arcana-meta.json";
 
 export function readSkillMeta(skillName: string): SkillMeta | null {
-  const metaPath = join(getInstallDir(), skillName, META_FILE);
+  const metaPath = join(getSkillDir(skillName), META_FILE);
   if (!existsSync(metaPath)) return null;
   try {
     return JSON.parse(readFileSync(metaPath, "utf-8")) as SkillMeta;
@@ -82,7 +88,32 @@ export function readSkillMeta(skillName: string): SkillMeta | null {
 }
 
 export function writeSkillMeta(skillName: string, meta: SkillMeta): void {
-  const skillDir = join(getInstallDir(), skillName);
+  const skillDir = getSkillDir(skillName);
   mkdirSync(skillDir, { recursive: true });
-  atomicWriteSync(join(skillDir, META_FILE), JSON.stringify(meta, null, 2) + "\n");
+  atomicWriteSync(join(skillDir, META_FILE), JSON.stringify(meta, null, 2) + "\n", 0o644);
+}
+
+export interface SymlinkInfo {
+  name: string;
+  fullPath: string;
+  target: string;
+  broken: boolean;
+}
+
+export function listSymlinks(): SymlinkInfo[] {
+  const symlinkDir = join(homedir(), ".claude", "skills");
+  if (!existsSync(symlinkDir)) return [];
+
+  const results: SymlinkInfo[] = [];
+  for (const entry of readdirSync(symlinkDir)) {
+    const fullPath = join(symlinkDir, entry);
+    try {
+      const stat = lstatSync(fullPath);
+      if (stat.isSymbolicLink()) {
+        const target = readlinkSync(fullPath);
+        results.push({ name: entry, fullPath, target, broken: !existsSync(target) });
+      }
+    } catch { /* skip unreadable */ }
+  }
+  return results;
 }

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import type { ArcanaConfig, ProviderConfig } from "../types.js";
 import { ui } from "./ui.js";
@@ -41,9 +41,21 @@ export function loadConfig(): ArcanaConfig {
 
 function applyEnvOverrides(config: ArcanaConfig): ArcanaConfig {
   const envInstallDir = process.env.ARCANA_INSTALL_DIR;
-  if (envInstallDir) config.installDir = envInstallDir;
+  if (envInstallDir) {
+    if (!isAbsolute(envInstallDir)) {
+      console.error(ui.warn("  Warning: ARCANA_INSTALL_DIR must be an absolute path. Ignoring."));
+    } else {
+      config.installDir = envInstallDir;
+    }
+  }
   const envProvider = process.env.ARCANA_DEFAULT_PROVIDER;
-  if (envProvider) config.defaultProvider = envProvider;
+  if (envProvider) {
+    if (envProvider.trim().length === 0) {
+      console.error(ui.warn("  Warning: ARCANA_DEFAULT_PROVIDER is empty. Ignoring."));
+    } else {
+      config.defaultProvider = envProvider.trim();
+    }
+  }
   return config;
 }
 
@@ -52,7 +64,7 @@ export function saveConfig(config: ArcanaConfig): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  atomicWriteSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
+  atomicWriteSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", 0o600);
 }
 
 export function addProvider(provider: ProviderConfig): void {

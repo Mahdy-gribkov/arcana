@@ -6,13 +6,29 @@ export interface HttpResponse {
   headers: Record<string, string | string[] | undefined>;
 }
 
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) {
+      parsed.username = "***";
+      parsed.password = "***";
+    }
+    for (const key of ["token", "access_token"]) {
+      if (parsed.searchParams.has(key)) parsed.searchParams.set(key, "***");
+    }
+    return parsed.toString();
+  } catch {
+    return url.replace(/token=[^&]+/g, "token=***");
+  }
+}
+
 export class HttpError extends Error {
   constructor(
     public readonly statusCode: number,
     public readonly url: string,
     message?: string
   ) {
-    super(message ?? `HTTP ${statusCode} from ${url}`);
+    super(message ?? `HTTP ${statusCode} from ${sanitizeUrl(url)}`);
     this.name = "HttpError";
   }
 }
@@ -32,6 +48,7 @@ const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const RETRYABLE_CODES = new Set(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET"]);
 const MAX_RETRIES = 3;
 const BASE_DELAY = 1000;
+const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -89,7 +106,7 @@ export async function httpGet(url: string, timeout = 15000): Promise<HttpRespons
     }
   }
 
-  throw lastError ?? new Error(`Failed after ${MAX_RETRIES} retries: ${url}`);
+  throw lastError ?? new Error(`Failed after ${MAX_RETRIES} retries: ${sanitizeUrl(url)}`);
 }
 
 function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpResponse> {
@@ -104,18 +121,32 @@ function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpRes
     }
 
     const req = https.get(url, { headers, timeout }, (res) => {
-      // Follow redirects
+      // Follow redirects (HTTPS only)
       if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
         if (redirectCount >= 5) {
-          reject(new Error(`Too many redirects (>5): ${url}`));
+          reject(new Error(`Too many redirects (>5): ${sanitizeUrl(url)}`));
           return;
         }
-        doGet(res.headers.location, timeout, redirectCount + 1).then(resolve, reject);
+        const location = res.headers.location;
+        if (!location.startsWith("https://")) {
+          reject(new Error(`Redirect to non-HTTPS URL blocked: ${sanitizeUrl(location)}`));
+          return;
+        }
+        doGet(location, timeout, redirectCount + 1).then(resolve, reject);
         return;
       }
 
       const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      let totalSize = 0;
+      res.on("data", (chunk: Buffer) => {
+        totalSize += chunk.length;
+        if (totalSize > MAX_BODY_SIZE) {
+          req.destroy();
+          reject(new Error(`Response exceeds ${MAX_BODY_SIZE} bytes from ${sanitizeUrl(url)}`));
+          return;
+        }
+        chunks.push(chunk);
+      });
       res.on("end", () => {
         resolve({
           body: Buffer.concat(chunks).toString("utf-8"),
@@ -128,7 +159,7 @@ function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpRes
     req.on("error", reject);
     req.on("timeout", () => {
       req.destroy();
-      reject(new Error(`Request timed out after ${timeout}ms: ${url}`));
+      reject(new Error(`Request timed out after ${timeout}ms: ${sanitizeUrl(url)}`));
     });
   });
 }

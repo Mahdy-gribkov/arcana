@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, lstatSync, readlinkSync, rmSync, statSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { ui, banner } from "../utils/ui.js";
-import { getDirSize } from "../utils/fs.js";
+import { getDirSize, listSymlinks } from "../utils/fs.js";
 
 export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
   banner();
@@ -16,23 +16,11 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
   let staleProjects = 0;
 
   // 1. Clean broken symlinks
-  const symlinkDir = join(homedir(), ".claude", "skills");
-  if (existsSync(symlinkDir)) {
-    for (const entry of readdirSync(symlinkDir)) {
-      const fullPath = join(symlinkDir, entry);
-      try {
-        const stat = lstatSync(fullPath);
-        if (stat.isSymbolicLink()) {
-          const target = readlinkSync(fullPath);
-          if (!existsSync(target)) {
-            if (!dryRun) rmSync(fullPath);
-            console.log(`  ${ui.dim("Remove broken symlink:")} ${entry}`);
-            brokenSymlinks++;
-            actions++;
-          }
-        }
-      } catch { /* skip */ }
-    }
+  for (const link of listSymlinks().filter(s => s.broken)) {
+    if (!dryRun) rmSync(link.fullPath);
+    console.log(`  ${ui.dim("Remove broken symlink:")} ${link.name}`);
+    brokenSymlinks++;
+    actions++;
   }
 
   // 2. Clean orphaned Claude project dirs

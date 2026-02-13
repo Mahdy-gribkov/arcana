@@ -2,11 +2,10 @@ import { createInterface } from "node:readline/promises";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { stdin, stdout } from "node:process";
-import { getInstallDir } from "../utils/fs.js";
+import { getSkillDir } from "../utils/fs.js";
 import { atomicWriteSync } from "../utils/atomic.js";
 import { ui, banner } from "../utils/ui.js";
-
-const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
+import { NAME_REGEX } from "../utils/frontmatter.js";
 
 function generateSkillMd(name: string, description: string): string {
   return `---
@@ -39,7 +38,7 @@ export async function createCommand(name: string): Promise<void> {
     process.exit(1);
   }
 
-  const skillDir = join(getInstallDir(), name);
+  const skillDir = getSkillDir(name);
   if (existsSync(skillDir)) {
     console.log(ui.error(`  Skill "${name}" already exists at ${skillDir}`));
     console.log(ui.dim("  Use a different name or uninstall the existing skill first."));

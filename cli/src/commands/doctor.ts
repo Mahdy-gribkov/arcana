@@ -1,9 +1,9 @@
-import { existsSync, readdirSync, lstatSync, readlinkSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { ui, banner } from "../utils/ui.js";
-import { getInstallDir, getDirSize } from "../utils/fs.js";
+import { getInstallDir, getDirSize, listSymlinks } from "../utils/fs.js";
 import type { DoctorCheck } from "../types.js";
 
 function checkNodeVersion(): DoctorCheck {
@@ -24,31 +24,15 @@ function checkInstallDir(): DoctorCheck {
 }
 
 function checkBrokenSymlinks(): DoctorCheck {
-  const symlinkDir = join(homedir(), ".claude", "skills");
-  if (!existsSync(symlinkDir)) {
+  const symlinks = listSymlinks();
+  if (symlinks.length === 0) {
     return { name: "Symlinks", status: "pass", message: "No symlink directory" };
   }
-
-  let broken = 0;
-  let total = 0;
-  try {
-    for (const entry of readdirSync(symlinkDir)) {
-      const fullPath = join(symlinkDir, entry);
-      try {
-        const stat = lstatSync(fullPath);
-        if (stat.isSymbolicLink()) {
-          total++;
-          const target = readlinkSync(fullPath);
-          if (!existsSync(target)) broken++;
-        }
-      } catch { broken++; }
-    }
-  } catch { /* skip */ }
-
+  const broken = symlinks.filter(s => s.broken).length;
   if (broken > 0) {
-    return { name: "Symlinks", status: "warn", message: `${broken}/${total} broken symlinks`, fix: "Run: arcana clean" };
+    return { name: "Symlinks", status: "warn", message: `${broken}/${symlinks.length} broken symlinks`, fix: "Run: arcana clean" };
   }
-  return { name: "Symlinks", status: "pass", message: `${total} symlinks ok` };
+  return { name: "Symlinks", status: "pass", message: `${symlinks.length} symlinks ok` };
 }
 
 function checkGitConfig(): DoctorCheck {

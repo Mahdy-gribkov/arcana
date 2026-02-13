@@ -1,5 +1,5 @@
 import type { Provider } from "../providers/base.js";
-import { ui, banner, spinner, getErrorHint } from "../utils/ui.js";
+import { ui, banner, spinner, printErrorWithHint } from "../utils/ui.js";
 import { installSkill, getInstallDir, isSkillInstalled, writeSkillMeta } from "../utils/fs.js";
 import { getProvider, getProviders } from "../registry.js";
 import { loadConfig } from "../utils/config.js";
@@ -56,11 +56,7 @@ async function installOne(skillName: string, provider: Provider, dryRun?: boolea
     console.log();
   } catch (err) {
     s.fail(`Failed to install ${skillName}`);
-    if (err instanceof Error) {
-      console.error(ui.dim(`  ${err.message}`));
-    }
-    const hint = getErrorHint(err);
-    if (hint) console.error(ui.dim(`  Hint: ${hint}`));
+    printErrorWithHint(err, true);
     console.log();
     process.exit(1);
   }

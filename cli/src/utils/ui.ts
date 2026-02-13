@@ -67,6 +67,14 @@ export function getErrorHint(err: unknown): string | undefined {
   return undefined;
 }
 
+export function printErrorWithHint(err: unknown, showMessage = false): void {
+  if (showMessage && err instanceof Error) {
+    console.error(ui.dim(`  ${err.message}`));
+  }
+  const hint = getErrorHint(err);
+  if (hint) console.error(ui.dim(`  Hint: ${hint}`));
+}
+
 export function errorAndExit(message: string, hint?: string): never {
   console.error();
   console.error(ui.error("  Error: ") + message);

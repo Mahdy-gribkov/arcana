@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ui, banner, spinner, table, getErrorHint } from "../utils/ui.js";
+import { ui, banner, spinner, table, printErrorWithHint } from "../utils/ui.js";
 import { isSkillInstalled, getInstallDir, readSkillMeta } from "../utils/fs.js";
 import { getProviders } from "../registry.js";
 
@@ -59,8 +59,7 @@ export async function listCommand(opts: {
     console.log();
   } catch (err) {
     s.fail("Failed to fetch skills");
-    const hint = getErrorHint(err);
-    if (hint) console.error(ui.dim(`  Hint: ${hint}`));
+    printErrorWithHint(err);
     throw err;
   }
 }

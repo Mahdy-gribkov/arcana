@@ -5,6 +5,7 @@ import type { SkillFrontmatter, ValidationResult } from "../types.js";
 const FM_DELIMITER = "---";
 export const MIN_DESC_LENGTH = 80;
 export const MAX_DESC_LENGTH = 1024;
+export const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
 
 export function extractFrontmatter(content: string): { raw: string; body: string } | null {
   const lines = content.split("\n");
@@ -43,8 +44,8 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
     const descMatch = trimmed.match(/^description:\s*(.*)$/);
     if (descMatch?.[1] !== undefined) {
       let value = descMatch[1].trim();
-      // Handle YAML multiline markers: | or >
-      if (value === "|" || value === ">") {
+      // Handle YAML multiline: |, >, or bare indented continuation
+      if (value === "|" || value === ">" || value === "") {
         const multilineLines: string[] = [];
         for (let j = i + 1; j < lines.length; j++) {
           const next = lines[j];
@@ -56,7 +57,9 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
             break;
           }
         }
-        description = multilineLines.join(value === "|" ? "\n" : " ");
+        if (multilineLines.length > 0) {
+          description = multilineLines.join(value === "|" ? "\n" : " ");
+        }
       } else {
         value = value.replace(/^["']|["']$/g, "");
         description = value;
@@ -64,7 +67,7 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
     }
   }
 
-  if (!name) return null;
+  if (!name || !NAME_REGEX.test(name)) return null;
   return { name, description };
 }
 
