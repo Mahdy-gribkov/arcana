@@ -1,0 +1,43 @@
+name: Test CLI
+
+on:
+  push:
+    paths: ["cli/**"]
+    branches: [master]
+  pull_request:
+    paths: ["cli/**"]
+    branches: [master]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci
+        working-directory: cli
+      - run: npx tsc --noEmit
+        working-directory: cli
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci
+        working-directory: cli
+      - run: npx tsc
+        working-directory: cli
+      - run: node dist/index.js --version
+        working-directory: cli
+      - run: node dist/index.js --help
+        working-directory: cli
