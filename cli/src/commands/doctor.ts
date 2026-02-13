@@ -114,9 +114,11 @@ function checkSkillValidity(): DoctorCheck {
   return { name: "Skill health", status: "pass", message: `${total} skills valid` };
 }
 
-export async function doctorCommand(): Promise<void> {
-  banner();
-  console.log(ui.bold("  Environment Health Check\n"));
+export async function doctorCommand(opts: { json?: boolean } = {}): Promise<void> {
+  if (!opts.json) {
+    banner();
+    console.log(ui.bold("  Environment Health Check\n"));
+  }
 
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
@@ -127,6 +129,11 @@ export async function doctorCommand(): Promise<void> {
     checkArcanaConfig(),
     checkDiskUsage(),
   ];
+
+  if (opts.json) {
+    console.log(JSON.stringify({ checks: checks.map((c) => ({ name: c.name, status: c.status, message: c.message, ...(c.fix ? { fix: c.fix } : {}) })) }, null, 2));
+    return;
+  }
 
   for (const check of checks) {
     const icon = check.status === "pass" ? ui.success("[OK]")

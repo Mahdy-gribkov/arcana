@@ -149,8 +149,16 @@ export function validateSkillDir(skillDir: string, skillName: string): Validatio
     result.warnings.push(`Name mismatch: frontmatter says "${parsed.name}", directory is "${skillName}"`);
   }
 
+  if (parsed.description && (parsed.description.startsWith('"') || parsed.description.startsWith("'"))) {
+    result.warnings.push("Description starts with a quote character (likely a YAML quoting issue)");
+  }
+
   if (extracted.body.trim().length < 50) {
     result.warnings.push("SKILL.md body is very short (less than 50 chars)");
+  }
+
+  if (extracted.body.trim().length >= 50 && !extracted.body.includes("##")) {
+    result.infos.push("Body has no ## headings (recommended for structure)");
   }
 
   if (result.errors.length > 0) result.valid = false;

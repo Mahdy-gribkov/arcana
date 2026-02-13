@@ -33,6 +33,7 @@ export function createCli(): Command {
     .option("-a, --all", "List from all providers")
     .option("--installed", "Show only installed skills")
     .option("--no-cache", "Bypass skill cache")
+    .option("-j, --json", "Output as JSON")
     .action((opts) => listCommand(opts));
 
   program
@@ -54,6 +55,7 @@ export function createCli(): Command {
     .description("Search for skills across providers")
     .option("-p, --provider <name>", "Limit search to provider")
     .option("--no-cache", "Bypass skill cache")
+    .option("-j, --json", "Output as JSON")
     .action((query, opts) => searchCommand(query, opts));
 
   program
@@ -73,6 +75,7 @@ export function createCli(): Command {
     .description("Validate skill structure and metadata")
     .option("-a, --all", "Validate all installed skills")
     .option("-f, --fix", "Auto-fix common issues")
+    .option("-j, --json", "Output as JSON")
     .action((skill, opts) => validateCommand(skill, opts));
 
   program
@@ -97,7 +100,8 @@ export function createCli(): Command {
   program
     .command("doctor")
     .description("Check environment and diagnose issues")
-    .action(() => doctorCommand());
+    .option("-j, --json", "Output as JSON")
+    .action((opts) => doctorCommand(opts));
 
   program
     .command("clean")

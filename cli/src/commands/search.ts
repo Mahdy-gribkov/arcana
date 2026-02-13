@@ -4,46 +4,56 @@ import { getProviders } from "../registry.js";
 
 export async function searchCommand(
   query: string,
-  opts: { provider?: string; cache?: boolean }
+  opts: { provider?: string; cache?: boolean; json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts.json) banner();
 
   const providers = getProviders(opts.provider);
 
   if (opts.cache === false) {
     for (const provider of providers) provider.clearCache();
   }
-  const s = spinner(`Searching for "${query}"...`);
-  s.start();
+  const s = opts.json ? null : spinner(`Searching for "${query}"...`);
+  s?.start();
 
-  const rows: string[][] = [];
+  const results: { name: string; description: string; source: string; installed: boolean }[] = [];
 
   try {
     for (const provider of providers) {
-      const results = await provider.search(query);
-      for (const skill of results) {
-        const installed = isSkillInstalled(skill.name);
-        rows.push([
-          ui.bold(skill.name),
-          skill.description.slice(0, 60) + (skill.description.length > 60 ? "..." : ""),
-          ui.dim(skill.source),
-          installed ? ui.success("[installed]") : "",
-        ]);
+      const skills = await provider.search(query);
+      for (const skill of skills) {
+        results.push({
+          name: skill.name,
+          description: skill.description,
+          source: skill.source,
+          installed: isSkillInstalled(skill.name),
+        });
       }
     }
   } catch (err) {
-    s.fail("Search failed due to a network or provider error.");
+    s?.fail("Search failed due to a network or provider error.");
     printErrorWithHint(err);
     throw err;
   }
 
-  s.stop();
+  s?.stop();
 
-  if (rows.length === 0) {
+  if (opts.json) {
+    console.log(JSON.stringify({ query, results }, null, 2));
+    return;
+  }
+
+  if (results.length === 0) {
     console.log(ui.dim(`  No skills matching "${query}"`));
   } else {
-    console.log(ui.bold(`  ${rows.length} results for "${query}":`));
+    console.log(ui.bold(`  ${results.length} results for "${query}":`));
     console.log();
+    const rows = results.map((r) => [
+      ui.bold(r.name),
+      r.description.slice(0, 60) + (r.description.length > 60 ? "..." : ""),
+      ui.dim(r.source),
+      r.installed ? ui.success("[installed]") : "",
+    ]);
     table(rows);
   }
 

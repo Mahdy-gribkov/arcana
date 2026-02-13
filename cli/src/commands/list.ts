@@ -11,11 +11,12 @@ export async function listCommand(opts: {
   all?: boolean;
   cache?: boolean;
   installed?: boolean;
+  json?: boolean;
 }): Promise<void> {
-  banner();
+  if (!opts.json) banner();
 
   if (opts.installed) {
-    listInstalled();
+    listInstalled(opts.json);
     return;
   }
 
@@ -25,56 +26,69 @@ export async function listCommand(opts: {
     for (const provider of providers) provider.clearCache();
   }
 
-  const s = spinner("Fetching skills...");
-  s.start();
+  const s = opts.json ? null : spinner("Fetching skills...");
+  s?.start();
 
   try {
-    const rows: string[][] = [];
+    const skills: { name: string; version: string; description: string; source: string; installed: boolean }[] = [];
 
     for (const provider of providers) {
-      const skills = await provider.list();
-      for (const skill of skills) {
-        const installed = isSkillInstalled(skill.name);
-        const status = installed ? ui.success("[installed]") : "";
-        rows.push([
-          ui.bold(skill.name),
-          ui.dim(`v${skill.version}`),
-          skill.description.slice(0, DESC_TRUNCATE_LENGTH) + (skill.description.length > DESC_TRUNCATE_LENGTH ? "..." : ""),
-          providers.length > 1 ? ui.dim(skill.source) : "",
-          status,
-        ]);
+      const results = await provider.list();
+      for (const skill of results) {
+        skills.push({
+          name: skill.name,
+          version: skill.version,
+          description: skill.description,
+          source: skill.source,
+          installed: isSkillInstalled(skill.name),
+        });
       }
     }
 
-    s.stop();
+    s?.stop();
 
-    if (rows.length === 0) {
+    if (opts.json) {
+      console.log(JSON.stringify({ skills }, null, 2));
+      return;
+    }
+
+    if (skills.length === 0) {
       console.log(ui.dim("  No skills found."));
     } else {
-      console.log(ui.bold(`  ${rows.length} skills available:`));
+      console.log(ui.bold(`  ${skills.length} skills available:`));
       console.log();
+      const rows = skills.map((skill) => [
+        ui.bold(skill.name),
+        ui.dim(`v${skill.version}`),
+        skill.description.slice(0, DESC_TRUNCATE_LENGTH) + (skill.description.length > DESC_TRUNCATE_LENGTH ? "..." : ""),
+        providers.length > 1 ? ui.dim(skill.source) : "",
+        skill.installed ? ui.success("[installed]") : "",
+      ]);
       table(rows);
     }
 
     console.log();
   } catch (err) {
-    s.fail("Failed to fetch skills");
+    s?.fail("Failed to fetch skills");
     printErrorWithHint(err);
     throw err;
   }
 }
 
-function listInstalled(): void {
+function listInstalled(json?: boolean): void {
   const installDir = getInstallDir();
-  if (!existsSync(installDir)) {
-    console.log(ui.dim("  No skills installed."));
-    console.log();
+  const dirs = existsSync(installDir)
+    ? readdirSync(installDir).filter((d) => statSync(join(installDir, d)).isDirectory())
+    : [];
+
+  if (json) {
+    const skills = dirs.map((name) => {
+      const meta = readSkillMeta(name);
+      return { name, version: meta?.version ?? "unknown", source: meta?.source ?? "local", installedAt: meta?.installedAt ?? null };
+    });
+    console.log(JSON.stringify({ skills }, null, 2));
     return;
   }
-
-  const dirs = readdirSync(installDir).filter((d) =>
-    statSync(join(installDir, d)).isDirectory()
-  );
 
   if (dirs.length === 0) {
     console.log(ui.dim("  No skills installed."));

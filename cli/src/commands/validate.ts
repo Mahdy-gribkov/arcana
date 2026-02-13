@@ -7,9 +7,9 @@ import type { ValidationResult } from "../types.js";
 
 export async function validateCommand(
   skill: string | undefined,
-  opts: { all?: boolean; fix?: boolean }
+  opts: { all?: boolean; fix?: boolean; json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts.json) banner();
 
   const installDir = getInstallDir();
   if (!existsSync(installDir)) {
@@ -60,6 +60,12 @@ export async function validateCommand(
     }
 
     results.push(result);
+  }
+
+  if (opts.json) {
+    console.log(JSON.stringify({ results: results.map((r) => ({ skill: r.skill, valid: r.valid, errors: r.errors, warnings: r.warnings, infos: r.infos, fixed: r.fixed ?? false })) }, null, 2));
+    if (results.some((r) => !r.valid)) process.exit(1);
+    return;
   }
 
   let passed = 0;

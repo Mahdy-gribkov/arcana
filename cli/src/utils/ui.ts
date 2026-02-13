@@ -1,6 +1,10 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 
+if (process.env.NO_COLOR || process.env.TERM === "dumb") {
+  chalk.level = 0;
+}
+
 const AMBER = chalk.hex("#d4943a");
 
 export const ui = {
