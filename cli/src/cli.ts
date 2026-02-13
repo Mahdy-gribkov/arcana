@@ -86,7 +86,7 @@ export function createCli(): Command {
   program
     .command("init")
     .description("Initialize arcana in current project")
-    .option("-t, --tool <name>", "Target tool (claude, cursor, codex)")
+    .option("-t, --tool <name>", "Target tool (claude, cursor, codex, gemini, antigravity, windsurf, aider)")
     .action((opts) => initCommand(opts));
 
   program

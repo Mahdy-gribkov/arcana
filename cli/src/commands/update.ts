@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getInstallDir, installSkill, readSkillMeta, writeSkillMeta } from "../utils/fs.js";
 import { getProvider, getProviders } from "../registry.js";
 import { ui, banner, spinner } from "../utils/ui.js";
+import { loadConfig } from "../utils/config.js";
 
 export async function updateCommand(
   skill: string | undefined,
@@ -25,7 +26,7 @@ export async function updateCommand(
     return;
   }
 
-  const providerName = opts.provider ?? "arcana";
+  const providerName = opts.provider ?? loadConfig().defaultProvider;
 
   if (opts.all) {
     await updateAll(installDir, providerName);

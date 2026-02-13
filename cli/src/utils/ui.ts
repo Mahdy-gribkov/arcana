@@ -56,6 +56,8 @@ export function errorAndExit(message: string, hint?: string): never {
   console.error(ui.error("  Error: ") + message);
   if (hint) {
     console.error(ui.dim("  Hint: ") + hint);
+  } else {
+    console.error(ui.dim("  Hint: Run `arcana doctor` to diagnose"));
   }
   console.error();
   process.exit(1);

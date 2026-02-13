@@ -6,6 +6,10 @@ import { errorAndExit } from "./utils/ui.js";
 
 const providerCache = new Map<string, Provider>();
 
+export function clearProviderCache(): void {
+  providerCache.clear();
+}
+
 function createProvider(name: string, type: string, url: string): Provider {
   if (providerCache.has(name)) return providerCache.get(name)!;
 

@@ -1,6 +1,6 @@
 {
   "name": "@mahdy-gribkov/arcana",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.",
   "bin": {
     "arcana": "dist/index.js"

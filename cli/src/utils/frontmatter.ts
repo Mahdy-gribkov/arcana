@@ -27,16 +27,35 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
   let name = "";
   let description = "";
 
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
+  const lines = raw.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
     const nameMatch = trimmed.match(/^name:\s*["']?(.+?)["']?\s*$/);
     if (nameMatch) {
       name = nameMatch[1];
+      name = name.replace(/^["']|["']$/g, "");
       continue;
     }
-    const descMatch = trimmed.match(/^description:\s*["']?(.+?)["']?\s*$/);
+    const descMatch = trimmed.match(/^description:\s*(.*)$/);
     if (descMatch) {
-      description = descMatch[1];
+      let value = descMatch[1].trim();
+      // Handle YAML multiline markers: | or >
+      if (value === "|" || value === ">") {
+        const multilineLines: string[] = [];
+        for (let j = i + 1; j < lines.length; j++) {
+          const next = lines[j];
+          // Continuation lines must be indented
+          if (next.length > 0 && (next[0] === " " || next[0] === "\t")) {
+            multilineLines.push(next.trim());
+          } else {
+            break;
+          }
+        }
+        description = multilineLines.join(value === "|" ? "\n" : " ");
+      } else {
+        value = value.replace(/^["']|["']$/g, "");
+        description = value;
+      }
     }
   }
 

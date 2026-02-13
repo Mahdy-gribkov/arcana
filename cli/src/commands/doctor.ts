@@ -3,14 +3,8 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { ui, banner } from "../utils/ui.js";
-import { getInstallDir } from "../utils/fs.js";
-
-interface DoctorCheck {
-  name: string;
-  status: "pass" | "warn" | "fail";
-  message: string;
-  fix?: string;
-}
+import { getInstallDir, getDirSize } from "../utils/fs.js";
+import type { DoctorCheck } from "../types.js";
 
 function checkNodeVersion(): DoctorCheck {
   const major = parseInt(process.version.slice(1));
@@ -66,7 +60,7 @@ function checkGitConfig(): DoctorCheck {
     }
     return { name: "Git config", status: "pass", message: `${name} <${email}>` };
   } catch {
-    return { name: "Git config", status: "warn", message: "Git not configured", fix: "Install git and set user.name/email" };
+    return { name: "Git config", status: "warn", message: "Git not found", fix: "Install Git from https://git-scm.com" };
   }
 }
 
@@ -81,19 +75,6 @@ function checkArcanaConfig(): DoctorCheck {
   } catch {
     return { name: "Arcana config", status: "fail", message: "Invalid JSON", fix: "Run: arcana config reset" };
   }
-}
-
-function getDirSize(dir: string): number {
-  let size = 0;
-  try {
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      const stat = statSync(full);
-      if (stat.isDirectory()) size += getDirSize(full);
-      else size += stat.size;
-    }
-  } catch { /* skip unreadable */ }
-  return size;
 }
 
 function checkDiskUsage(): DoctorCheck {

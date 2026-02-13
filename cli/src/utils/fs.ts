@@ -1,25 +1,64 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, rmSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import type { SkillFile, SkillMeta } from "../types.js";
+import { loadConfig } from "../utils/config.js";
+import { atomicWriteSync } from "./atomic.js";
 
 export function getInstallDir(): string {
-  return join(homedir(), ".agents", "skills");
+  return loadConfig().installDir;
+}
+
+export function getDirSize(dir: string): number {
+  let size = 0;
+  const queue = [dir];
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    try {
+      for (const entry of readdirSync(current)) {
+        const full = join(current, entry);
+        try {
+          const stat = statSync(full);
+          if (stat.isDirectory()) queue.push(full);
+          else size += stat.size;
+        } catch { /* skip unreadable entries */ }
+      }
+    } catch { /* skip unreadable dirs */ }
+  }
+  return size;
 }
 
 export function installSkill(skillName: string, files: SkillFile[]): string {
   const installDir = getInstallDir();
   const skillDir = join(installDir, skillName);
+  const tempDir = skillDir + ".installing";
 
-  mkdirSync(skillDir, { recursive: true });
+  // Crash recovery: remove leftover temp dir from a previous failed install
+  if (existsSync(tempDir)) {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 
-  for (const file of files) {
-    const filePath = join(skillDir, file.path);
-    const dir = dirname(filePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+  mkdirSync(tempDir, { recursive: true });
+
+  try {
+    for (const file of files) {
+      const filePath = join(tempDir, file.path);
+      const dir = dirname(filePath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      writeFileSync(filePath, file.content, "utf-8");
     }
-    writeFileSync(filePath, file.content, "utf-8");
+
+    // Remove old skill dir if it exists, then atomically rename temp to final
+    if (existsSync(skillDir)) {
+      rmSync(skillDir, { recursive: true, force: true });
+    }
+    renameSync(tempDir, skillDir);
+  } catch (err) {
+    // Clean up temp dir on failure
+    try { rmSync(tempDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+    throw err;
   }
 
   return skillDir;
@@ -45,5 +84,5 @@ export function readSkillMeta(skillName: string): SkillMeta | null {
 export function writeSkillMeta(skillName: string, meta: SkillMeta): void {
   const skillDir = join(getInstallDir(), skillName);
   mkdirSync(skillDir, { recursive: true });
-  writeFileSync(join(skillDir, META_FILE), JSON.stringify(meta, null, 2) + "\n", "utf-8");
+  atomicWriteSync(join(skillDir, META_FILE), JSON.stringify(meta, null, 2) + "\n");
 }

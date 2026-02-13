@@ -1,7 +1,9 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import type { ArcanaConfig, ProviderConfig } from "../types.js";
+import { ui } from "./ui.js";
+import { atomicWriteSync } from "./atomic.js";
 
 const CONFIG_PATH = join(homedir(), ".arcana", "config.json");
 
@@ -24,8 +26,14 @@ export function loadConfig(): ArcanaConfig {
   }
   try {
     const raw = readFileSync(CONFIG_PATH, "utf-8");
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const loaded = JSON.parse(raw) as Partial<ArcanaConfig>;
+    return {
+      ...DEFAULT_CONFIG,
+      ...loaded,
+      providers: loaded.providers ?? DEFAULT_CONFIG.providers,
+    };
   } catch {
+    console.error(ui.warn("  Warning: Config file is corrupted, using defaults"));
     return DEFAULT_CONFIG;
   }
 }
@@ -35,7 +43,7 @@ export function saveConfig(config: ArcanaConfig): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  atomicWriteSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
 }
 
 export function addProvider(provider: ProviderConfig): void {

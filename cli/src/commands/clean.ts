@@ -2,19 +2,7 @@ import { existsSync, readdirSync, lstatSync, readlinkSync, rmSync, statSync } fr
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { ui, banner } from "../utils/ui.js";
-
-function getDirSize(dir: string): number {
-  let size = 0;
-  try {
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      const stat = statSync(full);
-      if (stat.isDirectory()) size += getDirSize(full);
-      else size += stat.size;
-    }
-  } catch { /* skip */ }
-  return size;
-}
+import { getDirSize } from "../utils/fs.js";
 
 export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
   banner();

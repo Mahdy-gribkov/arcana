@@ -1,9 +1,9 @@
-import https from "node:https";
+import path from "node:path";
 import { Provider } from "./base.js";
 import type { SkillInfo, SkillFile, MarketplaceData } from "../types.js";
+import { httpGet } from "../utils/http.js";
 
-const VALID_SLUG = /^[a-zA-Z0-9_.-]+$/;
-const MAX_REDIRECTS = 5;
+const VALID_SLUG = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
 
 interface GitHubTreeItem {
   path: string;
@@ -35,44 +35,9 @@ export class GitHubProvider extends Provider {
     validateSlug(repo, "repo");
     this.owner = owner;
     this.repo = repo;
-    this.branch = opts?.branch ?? "master";
+    this.branch = opts?.branch ?? "main";
     this.name = opts?.name ?? `${owner}/${repo}`;
     this.displayName = opts?.displayName ?? `${owner}/${repo}`;
-  }
-
-  private httpGet(url: string, redirectCount = 0): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (redirectCount >= MAX_REDIRECTS) {
-        reject(new Error(`Too many redirects (${MAX_REDIRECTS}) for ${url}`));
-        return;
-      }
-
-      const req = https.get(
-        url,
-        { headers: { "User-Agent": "arcana-cli", Accept: "application/json" } },
-        (res) => {
-          if (res.statusCode === 301 || res.statusCode === 302) {
-            const location = res.headers.location;
-            if (location) {
-              this.httpGet(location, redirectCount + 1).then(resolve, reject);
-              return;
-            }
-          }
-          if (res.statusCode !== 200) {
-            reject(new Error(`HTTP ${res.statusCode} for ${url}`));
-            return;
-          }
-          let data = "";
-          res.on("data", (chunk: Buffer) => (data += chunk.toString()));
-          res.on("end", () => resolve(data));
-        }
-      );
-      req.on("error", reject);
-      req.setTimeout(15000, () => {
-        req.destroy();
-        reject(new Error(`Timeout fetching ${url}`));
-      });
-    });
   }
 
   private parseJSON<T>(raw: string, context: string): T {
@@ -87,7 +52,7 @@ export class GitHubProvider extends Provider {
     if (this.cache) return this.cache;
 
     const url = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/.claude-plugin/marketplace.json`;
-    const raw = await this.httpGet(url);
+    const { body: raw } = await httpGet(url);
     const data = this.parseJSON<MarketplaceData>(raw, `${this.name}/marketplace.json`);
 
     if (!data.plugins || !Array.isArray(data.plugins)) {
@@ -109,7 +74,7 @@ export class GitHubProvider extends Provider {
     validateSlug(skillName, "skill name");
 
     const treeUrl = `https://api.github.com/repos/${this.owner}/${this.repo}/git/trees/${this.branch}?recursive=1`;
-    const raw = await this.httpGet(treeUrl);
+    const { body: raw } = await httpGet(treeUrl);
     const tree = this.parseJSON<{ tree: GitHubTreeItem[] }>(raw, `${this.name}/tree`);
 
     const prefix = `skills/${skillName}/`;
@@ -123,9 +88,12 @@ export class GitHubProvider extends Provider {
 
     const results: SkillFile[] = [];
     for (const file of files) {
-      const contentUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/${file.path}`;
-      const content = await this.httpGet(contentUrl);
       const relativePath = file.path.slice(prefix.length);
+      if (relativePath.includes("..") || path.isAbsolute(relativePath)) {
+        continue;
+      }
+      const contentUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/${file.path}`;
+      const { body: content } = await httpGet(contentUrl);
       results.push({ path: relativePath, content });
     }
 

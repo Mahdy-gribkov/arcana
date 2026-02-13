@@ -1,5 +1,5 @@
 import { existsSync, rmSync, readdirSync, lstatSync, readlinkSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { getInstallDir } from "../utils/fs.js";
 import { ui, banner } from "../utils/ui.js";
@@ -29,12 +29,17 @@ export async function uninstallCommand(skillName: string): Promise<void> {
         const stat = lstatSync(fullPath);
         if (stat.isSymbolicLink()) {
           const target = readlinkSync(fullPath);
-          if (target.includes(skillName)) {
+          const normalizedTarget = resolve(target);
+          const expectedTarget = resolve(join(getInstallDir(), skillName));
+          if (normalizedTarget === expectedTarget || normalizedTarget.startsWith(expectedTarget + sep)) {
             rmSync(fullPath);
             symlinksRemoved++;
           }
         }
-      } catch { /* skip */ }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(ui.warn(`  Could not remove symlink ${entry}: ${msg}`));
+      }
     }
   }
 

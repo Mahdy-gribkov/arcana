@@ -1,0 +1,17 @@
+import { writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { randomBytes } from "node:crypto";
+
+export function atomicWriteSync(filePath: string, content: string): void {
+  const dir = dirname(filePath);
+  mkdirSync(dir, { recursive: true });
+
+  const tmpPath = join(dir, `.${randomBytes(4).toString("hex")}.tmp`);
+  try {
+    writeFileSync(tmpPath, content, "utf-8");
+    renameSync(tmpPath, filePath);
+  } catch (err) {
+    try { unlinkSync(tmpPath); } catch { /* cleanup best-effort */ }
+    throw err;
+  }
+}

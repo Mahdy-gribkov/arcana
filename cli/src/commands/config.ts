@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { loadConfig, saveConfig } from "../utils/config.js";
 import { ui, banner, table } from "../utils/ui.js";
+import { clearProviderCache } from "../registry.js";
 
 const VALID_KEYS = ["defaultProvider", "installDir"] as const;
 type ConfigKey = (typeof VALID_KEYS)[number];
@@ -36,6 +37,7 @@ export async function configCommand(
     const configPath = join(homedir(), ".arcana", "config.json");
     if (existsSync(configPath)) {
       rmSync(configPath);
+      clearProviderCache();
       console.log(ui.success("  Config reset to defaults"));
     } else {
       console.log(ui.dim("  Already using defaults"));
@@ -63,6 +65,12 @@ export async function configCommand(
   }
 
   // Set value
+  if (key === "installDir") {
+    const { isAbsolute } = await import("node:path");
+    if (!isAbsolute(value)) {
+      console.log(ui.warn(`  Warning: "${value}" is not an absolute path`));
+    }
+  }
   (config as unknown as Record<string, unknown>)[key] = value;
   saveConfig(config);
   console.log(ui.success(`  Set ${key} = ${value}`));

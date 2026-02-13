@@ -4,7 +4,7 @@ Agent skills that work across AI coding tools. Drop them into your tools directo
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Skills](https://img.shields.io/badge/Skills-49-blue.svg)](#skills)
-[![Platforms](https://img.shields.io/badge/Platforms-5+-green.svg)](#compatibility)
+[![Platforms](https://img.shields.io/badge/Platforms-7-green.svg)](#compatibility)
 
 ## What Is This
 
@@ -119,10 +119,12 @@ These skills follow the open Agent Skills standard (December 2025).
 | Platform | Status |
 |----------|--------|
 | Claude Code (Anthropic) | Fully supported |
-| Codex CLI (OpenAI) | Compatible |
-| Cursor AI | Compatible |
-| Gemini CLI (Google) | Compatible |
-| Antigravity (Google) | Compatible |
+| Codex CLI (OpenAI) | Supported (AGENTS.md) |
+| Cursor AI | Supported (.cursor/rules/) |
+| Gemini CLI (Google) | Supported (GEMINI.md) |
+| Windsurf (Codeium) | Supported (.windsurfrules) |
+| Antigravity (Google) | Supported (GEMINI.md) |
+| Aider | Supported (.aider.conf.yml) |
 
 ## Support This Project
 

@@ -1,5 +1,50 @@
 # Changelog
 
+## 2.0.3 (2026-02-13)
+
+Full quality pass: 18 bug fixes, 3 new shared utilities, 3 new platform scaffolds. Security hardening based on patterns from Vercel CLI, gh CLI, and npm.
+
+### Security
+- github.ts: path traversal guard rejects `..` and absolute paths from marketplace tree API
+- installSkill(): atomic install via temp `.installing` dir, crash recovery on restart
+- writeSkillMeta(), saveConfig(): atomic writes via temp file + rename pattern
+- config.ts: corrupted config.json now warns instead of silent fallback to defaults
+- providers.ts: validates marketplace.json exists before adding a provider
+
+### Fixed
+- install.ts: writes `.arcana-meta.json` so `update` can track versions
+- install.ts/update.ts: use config `defaultProvider` instead of hardcoded "arcana"
+- install.ts: says "Reinstalling..." instead of "Updating..." when overwriting
+- uninstall.ts: symlink matching uses `resolve()` + `sep`, no false partial matches
+- uninstall.ts: logs warnings on symlink removal failures instead of silent catch
+- frontmatter.ts: quoted values (`name: "foo"`) no longer include the quotes
+- frontmatter.ts: handles YAML multiline descriptions (`|` and `>` markers)
+- config.ts (utils): partial config no longer wipes providers array (shallow merge fix)
+- config.ts (command): warns when setting installDir to a relative path
+- config.ts (command): `arcana config reset` clears provider cache
+- github.ts: VALID_SLUG regex requires alphanumeric start/end
+- github.ts: default branch changed to "main" (arcana.ts passes "master" explicitly)
+- stats.ts: JSONL line counting uses buffer scan, token count labeled as rough estimate
+- doctor.ts: imports DoctorCheck from types.ts, proper git-not-installed error message
+- errorAndExit(): default hint suggests `arcana doctor` when no specific hint given
+
+### Added
+- `utils/http.ts`: shared HTTP client with exponential backoff, jitter, retry on 429/5xx, rate limit detection, GITHUB_TOKEN support
+- `utils/errors.ts`: structured CliError, HttpError, RateLimitError, ConfigError types
+- `utils/atomic.ts`: atomicWriteSync (temp file + rename pattern from npm)
+- `arcana init --tool windsurf` scaffolds `.windsurfrules`
+- `arcana init --tool antigravity` scaffolds `GEMINI.md`
+- `arcana init --tool aider` scaffolds `.aider.conf.yml`
+- Platform count: 4 -> 7 (Claude, Cursor, Codex, Gemini, Antigravity, Windsurf, Aider)
+
+### Changed
+- github.ts: uses shared http.ts instead of local httpGet (retry, rate limits, auth)
+- index.ts: centralized error handler for CliError/HttpError/RateLimitError
+- getDirSize(): shared iterative implementation in utils/fs.ts, removed from doctor.ts and clean.ts
+- getInstallDir(): reads from config instead of hardcoded path
+- Codex scaffold: `codex.md` -> `AGENTS.md` (matches OpenAI's actual standard)
+- README: compatibility table updated with all 7 platforms and their config files
+
 ## 2.0.2 (2026-02-13)
 
 Expanded CLI from skill installer to AI development tool. 8 new commands for skill lifecycle, environment management, diagnostics, and analytics.

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import { ui, banner } from "../utils/ui.js";
 
-type ToolName = "claude" | "cursor" | "codex" | "gemini";
+type ToolName = "claude" | "cursor" | "codex" | "gemini" | "antigravity" | "windsurf" | "aider";
 
 interface ProjectInfo {
   name: string;
@@ -60,11 +60,10 @@ This is a ${proj.type} project.
 }
 
 function codexTemplate(proj: ProjectInfo): string {
-  return `# Codex Instructions - ${proj.name}
+  return `# AGENTS.md - ${proj.name}
 
 ## Project
-Type: ${proj.type}
-Language: ${proj.lang}
+Type: ${proj.type} | Language: ${proj.lang}
 
 ## Guidelines
 - Follow existing patterns in the codebase
@@ -86,6 +85,46 @@ This is a ${proj.type} project using ${proj.lang}.
 `;
 }
 
+function antigravityTemplate(proj: ProjectInfo): string {
+  return `# GEMINI.md - ${proj.name}
+
+## Project Context
+This is a ${proj.type} project using ${proj.lang}.
+
+## Instructions
+- Follow existing patterns in the codebase
+- Write clean, maintainable code
+- Handle errors explicitly
+`;
+}
+
+function windsurfTemplate(proj: ProjectInfo): string {
+  return `# Project Rules - ${proj.name}
+
+Project: ${proj.name} (${proj.type})
+Language: ${proj.lang}
+
+## Instructions
+- Follow existing patterns in the codebase
+- Write clean, maintainable code
+- Handle errors explicitly
+- Use meaningful variable names
+`;
+}
+
+function aiderTemplate(proj: ProjectInfo): string {
+  return `# Aider Configuration - ${proj.name}
+
+## Project Context
+This is a ${proj.type} project using ${proj.lang}.
+
+## Conventions
+- Follow existing patterns in the codebase
+- Write clean, maintainable code
+- Handle errors explicitly
+`;
+}
+
 const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); template: (p: ProjectInfo) => string; label: string }> = {
   claude: { path: "CLAUDE.md", template: claudeTemplate, label: "Claude Code" },
   cursor: {
@@ -97,8 +136,11 @@ const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); t
     template: cursorTemplate,
     label: "Cursor",
   },
-  codex: { path: "codex.md", template: codexTemplate, label: "Codex CLI" },
+  codex: { path: "AGENTS.md", template: codexTemplate, label: "Codex CLI" },
   gemini: { path: "GEMINI.md", template: geminiTemplate, label: "Gemini CLI" },
+  antigravity: { path: "GEMINI.md", template: antigravityTemplate, label: "Antigravity" },
+  windsurf: { path: ".windsurfrules", template: windsurfTemplate, label: "Windsurf" },
+  aider: { path: ".aider.conf.yml", template: aiderTemplate, label: "Aider" },
 };
 
 export async function initCommand(opts: { tool?: string }): Promise<void> {
@@ -113,7 +155,7 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
   console.log();
 
   const tools: ToolName[] = opts.tool === "all" || !opts.tool
-    ? ["claude", "cursor", "codex", "gemini"]
+    ? ["claude", "cursor", "codex", "gemini", "antigravity", "windsurf", "aider"]
     : [opts.tool as ToolName];
 
   let created = 0;

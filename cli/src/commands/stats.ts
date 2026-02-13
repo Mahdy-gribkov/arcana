@@ -29,8 +29,12 @@ function discoverSessions(): SessionInfo[] {
       // Count lines without loading entire file into memory
       let lines = 0;
       try {
-        const content = readFileSync(fullPath, "utf-8");
-        lines = content.split("\n").filter((l) => l.trim()).length;
+        const buf = readFileSync(fullPath);
+        let lineCount = 0;
+        for (let i = 0; i < buf.length; i++) {
+          if (buf[i] === 10) lineCount++;
+        }
+        lines = lineCount;
       } catch {
         continue;
       }
@@ -114,7 +118,7 @@ export async function statsCommand(opts: { json?: boolean }): Promise<void> {
     [ui.dim("Sessions"), String(sessions.length)],
     [ui.dim("Projects"), String(projects.size)],
     [ui.dim("Total data"), formatBytes(totalSize)],
-    [ui.dim("Est. tokens"), estimatedTokens.toLocaleString()],
+    [ui.dim("Est. tokens"), `~${(estimatedTokens / 1_000_000).toFixed(1)}M (rough)`],
     [ui.dim("Avg lines/session"), String(avgLines)],
     [ui.dim("Newest session"), newest.modified.toLocaleDateString()],
     [ui.dim("Oldest session"), oldest.modified.toLocaleDateString()],

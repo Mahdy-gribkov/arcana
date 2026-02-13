@@ -1,5 +1,6 @@
-import { ui, banner, table } from "../utils/ui.js";
+import { ui, banner, table, spinner } from "../utils/ui.js";
 import { loadConfig, addProvider, removeProvider } from "../utils/config.js";
+import { httpGet, HttpError } from "../utils/http.js";
 
 export async function providersCommand(opts: {
   add?: string;
@@ -15,6 +16,24 @@ export async function providersCommand(opts: {
       process.exit(1);
     }
     const name = parts.join("/");
+    const s = spinner(`Validating ${opts.add}...`);
+    s.start();
+    try {
+      const [owner, repo] = parts;
+      await httpGet(`https://raw.githubusercontent.com/${owner}/${repo}/main/.claude-plugin/marketplace.json`);
+      s.succeed(`Provider ${opts.add} verified`);
+    } catch {
+      try {
+        const [owner, repo] = parts;
+        await httpGet(`https://raw.githubusercontent.com/${owner}/${repo}/master/.claude-plugin/marketplace.json`);
+        s.succeed(`Provider ${opts.add} verified`);
+      } catch {
+        s.fail(`Could not find marketplace.json at ${opts.add}`);
+        console.log(ui.dim("  Ensure the repo has .claude-plugin/marketplace.json"));
+        console.log();
+        process.exit(1);
+      }
+    }
     addProvider({ name, type: "github", url: opts.add, enabled: true });
     console.log(ui.success(`  Added provider: ${name}`));
     console.log(ui.dim(`  Use: arcana list --provider ${name}`));
