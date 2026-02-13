@@ -6,7 +6,7 @@ export interface HttpResponse {
   headers: Record<string, string | string[] | undefined>;
 }
 
-function sanitizeUrl(url: string): string {
+export function sanitizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.username || parsed.password) {
