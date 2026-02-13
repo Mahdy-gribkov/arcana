@@ -1,5 +1,55 @@
 # Changelog
 
+## 2.0.4 (2026-02-14)
+
+Complete audit: 50+ fixes across CLI, repo, CI/CD, and documentation.
+
+### Bug Fixes
+- search.ts, info.ts: added try/catch for provider errors (was crashing on network failure)
+- stats --json: banner no longer corrupts JSON output
+- http.ts: redirect loop protection (max 5), 403 rate-limit detection fixed
+- create.ts: validates description max length (1024 chars)
+- init.ts: --tool validates against known tools, cursor path no longer has side effects
+- install --all, update --all: one failure no longer kills entire batch
+- config: validates installDir non-empty, defaultProvider must be a configured provider
+- marketplace.json: fixed version numbers for 13 updated skills
+
+### New Features
+- `arcana list --installed`: show locally installed skills with metadata
+- `arcana install --dry-run`: preview what would be installed
+- `arcana uninstall --yes`: skip confirmation prompt
+- `arcana list --no-cache` / `arcana search --no-cache`: bypass provider cache
+- Environment variable overrides: ARCANA_INSTALL_DIR, ARCANA_DEFAULT_PROVIDER
+- Fuzzy search: typos like "typscript" now find "typescript"
+- Update command shows file count on success
+
+### UX Improvements
+- Batch install/update shows progress counter (5/49)
+- List description truncation bumped to 80 chars
+- Doctor shows disk usage threshold in warning
+- Clean --dry-run shows what categories were checked
+- Error messages suggest specific fixes (check internet, run doctor)
+- Init templates are tool-specific (Cursor .mdc, Aider YAML, Codex sandbox)
+- Validate: non-standard fields shown as info, not warnings
+- Uninstall prompts for confirmation by default
+
+### Code Quality
+- tsconfig: noUncheckedIndexedAccess enabled
+- registry.ts: deduplicated provider slug parsing (parseProviderSlug)
+- frontmatter.ts: exported MIN/MAX_DESC_LENGTH constants
+- types.ts: removed unused category field
+- Atomic writes for create.ts
+
+### Repo Infrastructure
+- .gitignore: expanded from 6 to 30+ entries
+- CI: validate-skills.yml fixed for master branch, Python-based description extraction
+- CI: npm-publish.yml adds smoke test
+- .github/CODEOWNERS: all files require @mahdy-gribkov review
+- PR template: added testing, breaking changes, related issues sections
+- SECURITY.md: added 90-day disclosure timeline
+- CONTRIBUTING.md: added SKILL.md template example
+- package.json: fixed homepage, added bugs URL, repository directory
+
 ## 2.0.3 (2026-02-13)
 
 Full quality pass: 18 bug fixes, 3 new shared utilities, 3 new platform scaffolds. Security hardening based on patterns from Vercel CLI, gh CLI, and npm.
@@ -90,8 +140,8 @@ Tripled skill count. Added 36 new skills across 15 categories, batch publishing 
 - **Game Dev**: asset-optimization, audio-systems, daw-music, game-design-theory, game-engines, game-servers, game-tools-workflows, gameplay-mechanics, graphics-rendering, level-design, memory-management, monetization-systems, networking-servers, particle-systems, programming-architecture, publishing-platforms, shader-techniques, synchronization-algorithms
 
 ### Added - Tooling
-- batch-publish.py: publish all skills in one command
-- fix-sasmp.py: fix non-standard SASMP/OpenClaw frontmatter
+- batch-publish.py (local tooling, not in repo): publish all skills in one command
+- fix-sasmp.py (local tooling, not in repo): fix non-standard SASMP/OpenClaw frontmatter
 - Extended CATEGORY_MAP for all 49 skills
 
 ### Changed

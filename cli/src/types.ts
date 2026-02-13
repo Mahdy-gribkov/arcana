@@ -4,7 +4,6 @@ export interface SkillInfo {
   version: string;
   source: string;
   repo?: string;
-  category?: string;
 }
 
 export interface SkillFile {
@@ -49,6 +48,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+  infos: string[];
   fixed?: boolean;
 }
 

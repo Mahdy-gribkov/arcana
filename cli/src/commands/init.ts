@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, dirname } from "node:path";
 import { ui, banner } from "../utils/ui.js";
 
 type ToolName = "claude" | "cursor" | "codex" | "gemini" | "antigravity" | "windsurf" | "aider";
@@ -37,9 +37,12 @@ function claudeTemplate(proj: ProjectInfo): string {
 
 ## Coding Preferences
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
-- Use meaningful variable names
+- Use meaningful variable names, no abbreviations
+
+## Build & Test
+<!-- Add build/test commands so Claude can verify changes -->
+<!-- Example: npm test, go test ./..., pytest -->
 
 ## Project Structure
 <!-- Describe your project structure here -->
@@ -47,15 +50,20 @@ function claudeTemplate(proj: ProjectInfo): string {
 }
 
 function cursorTemplate(proj: ProjectInfo): string {
-  return `# Cursor Rules - ${proj.name}
+  return `---
+description: Project conventions for ${proj.name}
+globs:
+---
 
-## Project Context
-This is a ${proj.type} project.
+# ${proj.name} (${proj.type})
+
+## Language
+${proj.lang}
 
 ## Coding Standards
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
+- Use meaningful variable names
 `;
 }
 
@@ -65,10 +73,14 @@ function codexTemplate(proj: ProjectInfo): string {
 ## Project
 Type: ${proj.type} | Language: ${proj.lang}
 
+## Sandbox
+Codex runs in a sandboxed environment with no network access.
+All dependencies must be pre-installed before the session.
+
 ## Guidelines
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
+- Use meaningful variable names
 `;
 }
 
@@ -78,10 +90,14 @@ function geminiTemplate(proj: ProjectInfo): string {
 ## Project Context
 This is a ${proj.type} project using ${proj.lang}.
 
+## Project Files
+<!-- List key files and directories so Gemini can navigate the codebase -->
+<!-- Example: src/ - main source, tests/ - test files -->
+
 ## Instructions
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
+- Use meaningful variable names
 `;
 }
 
@@ -91,48 +107,48 @@ function antigravityTemplate(proj: ProjectInfo): string {
 ## Project Context
 This is a ${proj.type} project using ${proj.lang}.
 
-## Instructions
-- Follow existing patterns in the codebase
-- Write clean, maintainable code
-- Handle errors explicitly
-`;
-}
-
-function windsurfTemplate(proj: ProjectInfo): string {
-  return `# Project Rules - ${proj.name}
-
-Project: ${proj.name} (${proj.type})
-Language: ${proj.lang}
+## Project Files
+<!-- List key files and directories so the agent can navigate the codebase -->
+<!-- Example: src/ - main source, tests/ - test files -->
 
 ## Instructions
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
 - Use meaningful variable names
 `;
 }
 
-function aiderTemplate(proj: ProjectInfo): string {
-  return `# Aider Configuration - ${proj.name}
+function windsurfTemplate(proj: ProjectInfo): string {
+  return `# Windsurf Cascades Rules - ${proj.name}
 
-## Project Context
-This is a ${proj.type} project using ${proj.lang}.
+Project: ${proj.name} (${proj.type})
+Language: ${proj.lang}
 
-## Conventions
+## Rules
 - Follow existing patterns in the codebase
-- Write clean, maintainable code
 - Handle errors explicitly
+- Use meaningful variable names
+- Always explain changes before applying them
+`;
+}
+
+function aiderTemplate(_proj: ProjectInfo): string {
+  return `# Aider Configuration
+model: sonnet
+auto-commits: true
+auto-test: false
+# Add conventions below
+conventions:
+  - Follow existing patterns in the codebase
+  - Write clean, maintainable code
+  - Handle errors explicitly
 `;
 }
 
 const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); template: (p: ProjectInfo) => string; label: string }> = {
   claude: { path: "CLAUDE.md", template: claudeTemplate, label: "Claude Code" },
   cursor: {
-    path: (cwd: string) => {
-      const dir = join(cwd, ".cursor", "rules");
-      mkdirSync(dir, { recursive: true });
-      return join(".cursor", "rules", "project.mdc");
-    },
+    path: join(".cursor", "rules", "project.mdc"),
     template: cursorTemplate,
     label: "Cursor",
   },
@@ -153,6 +169,14 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
   console.log(ui.dim(`  Name: ${proj.name}`));
   console.log(ui.dim(`  Type: ${proj.type}`));
   console.log();
+
+  if (opts.tool && opts.tool !== "all" && !(opts.tool in TOOL_FILES)) {
+    const valid = Object.keys(TOOL_FILES).join(", ");
+    console.log(ui.error(`  Unknown tool: ${opts.tool}`));
+    console.log(ui.dim(`  Valid tools: ${valid}`));
+    console.log();
+    process.exit(1);
+  }
 
   const tools: ToolName[] = opts.tool === "all" || !opts.tool
     ? ["claude", "cursor", "codex", "gemini", "antigravity", "windsurf", "aider"]
@@ -178,6 +202,7 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
     }
 
     const content = entry.template(proj);
+    mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, content, "utf-8");
     console.log(ui.success(`  Created ${relPath}`) + ui.dim(` (${entry.label})`));
     created++;

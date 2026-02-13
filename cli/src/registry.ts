@@ -10,25 +10,31 @@ export function clearProviderCache(): void {
   providerCache.clear();
 }
 
+export function parseProviderSlug(input: string): { owner: string; repo: string } {
+  const parts = input.split("/");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    errorAndExit(`Invalid provider slug: "${input}"`, "Use format: owner/repo");
+  }
+  return { owner: parts[0], repo: parts[1] };
+}
+
 function createProvider(name: string, type: string, url: string): Provider {
-  if (providerCache.has(name)) return providerCache.get(name)!;
+  const cached = providerCache.get(name);
+  if (cached) return cached;
 
   let provider: Provider;
 
   if (name === "arcana") {
     provider = new ArcanaProvider();
   } else if (type === "github") {
-    const parts = url.split("/");
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
-      errorAndExit(`Invalid GitHub provider URL: ${url}`, "Use format: owner/repo");
-    }
+    const { owner, repo } = parseProviderSlug(url);
     try {
-      validateSlug(parts[0], "owner");
-      validateSlug(parts[1], "repo");
+      validateSlug(owner, "owner");
+      validateSlug(repo, "repo");
     } catch (err) {
       errorAndExit(err instanceof Error ? err.message : String(err));
     }
-    provider = new GitHubProvider(parts[0], parts[1], { name, displayName: name });
+    provider = new GitHubProvider(owner, repo, { name, displayName: name });
   } else {
     errorAndExit(`Unknown provider type: ${type}`, "Supported types: github");
   }
@@ -45,11 +51,8 @@ export function getProvider(name?: string): Provider {
   if (!providerConfig) {
     // If it looks like owner/repo, treat as ad-hoc GitHub provider
     if (providerName.includes("/")) {
-      const parts = providerName.split("/");
-      if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        errorAndExit(`Invalid provider: "${providerName}"`, "Use format: owner/repo");
-      }
-      return new GitHubProvider(parts[0], parts[1], {
+      const { owner, repo } = parseProviderSlug(providerName);
+      return new GitHubProvider(owner, repo, {
         name: providerName,
         displayName: providerName,
       });

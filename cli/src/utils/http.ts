@@ -54,8 +54,9 @@ export async function httpGet(url: string, timeout = 15000): Promise<HttpRespons
 
       // Rate limit check
       if (result.statusCode === 403) {
+        const limit = result.headers["x-ratelimit-limit"];
         const remaining = result.headers["x-ratelimit-remaining"];
-        if (remaining === "0") {
+        if (limit && remaining === "0") {
           const resetHeader = result.headers["x-ratelimit-reset"];
           const resetAt = resetHeader ? new Date(Number(resetHeader) * 1000) : null;
           throw new RateLimitError(url, resetAt);
@@ -91,7 +92,7 @@ export async function httpGet(url: string, timeout = 15000): Promise<HttpRespons
   throw lastError ?? new Error(`Failed after ${MAX_RETRIES} retries: ${url}`);
 }
 
-function doGet(url: string, timeout: number): Promise<HttpResponse> {
+function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
     const headers: Record<string, string> = {
       "User-Agent": "arcana-cli",
@@ -105,7 +106,11 @@ function doGet(url: string, timeout: number): Promise<HttpResponse> {
     const req = https.get(url, { headers, timeout }, (res) => {
       // Follow redirects
       if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-        doGet(res.headers.location, timeout).then(resolve, reject);
+        if (redirectCount >= 5) {
+          reject(new Error(`Too many redirects (>5): ${url}`));
+          return;
+        }
+        doGet(res.headers.location, timeout, redirectCount + 1).then(resolve, reject);
         return;
       }
 

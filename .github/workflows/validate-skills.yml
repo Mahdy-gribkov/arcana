@@ -2,9 +2,9 @@ name: Validate Skills
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   validate:
@@ -67,36 +67,45 @@ jobs:
 
       - name: Check description quality
         run: |
-          errors=0
-          for skill_dir in skills/*/; do
-            skill_name=$(basename "$skill_dir")
-            skill_md="$skill_dir/SKILL.md"
-
-            desc=$(sed -n '/^---$/,/^---$/p' "$skill_md" | grep '^description:' | sed 's/^description:\s*//')
-
-            if [ -z "$desc" ]; then
-              echo "ERROR: $skill_name has no description in frontmatter"
-              errors=1
-              continue
-            fi
-
-            len=${#desc}
-            if [ "$len" -lt 80 ]; then
-              echo "ERROR: $skill_name description too short ($len chars, need 80+)"
-              errors=1
-            fi
-
-            if [ "$len" -gt 1024 ]; then
-              echo "ERROR: $skill_name description too long ($len chars, max 1024)"
-              errors=1
-            fi
-
-            echo "OK: $skill_name ($len chars)"
-          done
-
-          if [ "$errors" -eq 1 ]; then
-            exit 1
-          fi
+          python3 -c "
+          import os, sys
+          errors = 0
+          for skill_name in sorted(os.listdir('skills')):
+              skill_dir = os.path.join('skills', skill_name)
+              if not os.path.isdir(skill_dir):
+                  continue
+              skill_md = os.path.join(skill_dir, 'SKILL.md')
+              if not os.path.isfile(skill_md):
+                  continue
+              with open(skill_md, 'r') as f:
+                  content = f.read()
+              # Extract frontmatter
+              if not content.startswith('---'):
+                  print(f'ERROR: {skill_name} missing frontmatter')
+                  errors += 1
+                  continue
+              end = content.index('---', 3)
+              fm = content[3:end].strip()
+              desc = ''
+              for line in fm.split('\n'):
+                  if line.startswith('description:'):
+                      desc = line.split(':', 1)[1].strip().strip('\"').strip(\"'\")
+                      break
+              if not desc:
+                  print(f'ERROR: {skill_name} has no description')
+                  errors += 1
+                  continue
+              if len(desc) < 80:
+                  print(f'ERROR: {skill_name} description too short ({len(desc)} chars)')
+                  errors += 1
+              elif len(desc) > 1024:
+                  print(f'ERROR: {skill_name} description too long ({len(desc)} chars)')
+                  errors += 1
+              else:
+                  print(f'OK: {skill_name} ({len(desc)} chars)')
+          if errors > 0:
+              sys.exit(1)
+          "
 
       - name: Check for duplicate skill names
         run: |

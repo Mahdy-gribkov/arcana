@@ -38,17 +38,33 @@ function padWithAnsi(str: string, width: number): string {
 export function table(rows: string[][]): void {
   if (rows.length === 0) return;
 
-  const colWidths = rows[0].map((_, colIdx) =>
+  const firstRow = rows[0];
+  if (!firstRow) return;
+  const colWidths = firstRow.map((_, colIdx) =>
     Math.max(...rows.map((row) => stripAnsi(row[colIdx] ?? "").length))
   );
 
   for (const row of rows) {
     const line = row
-      .map((cell, i) => padWithAnsi(cell, colWidths[i] + 2))
+      .map((cell, i) => padWithAnsi(cell, (colWidths[i] ?? 0) + 2))
       .join("")
       .trimEnd();
     console.log("  " + line);
   }
+}
+
+const NETWORK_PATTERNS = ["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ENETUNREACH", "EAI_AGAIN"];
+
+export function getErrorHint(err: unknown): string | undefined {
+  if (!(err instanceof Error)) return undefined;
+  const msg = err.message;
+  if (NETWORK_PATTERNS.some((p) => msg.includes(p))) {
+    return "Check your internet connection and try again.";
+  }
+  if (msg.includes("404") || msg.includes("Not Found")) {
+    return "Skill not found. Run `arcana search <query>` to find skills.";
+  }
+  return undefined;
 }
 
 export function errorAndExit(message: string, hint?: string): never {

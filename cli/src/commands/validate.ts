@@ -38,7 +38,7 @@ export async function validateCommand(
   for (const name of skills) {
     const skillDir = join(installDir, name);
     if (!existsSync(skillDir)) {
-      results.push({ skill: name, valid: false, errors: ["Not installed"], warnings: [] });
+      results.push({ skill: name, valid: false, errors: ["Not installed"], warnings: [], infos: [] });
       continue;
     }
 
@@ -80,6 +80,9 @@ export async function validateCommand(
     }
     for (const warn of r.warnings) {
       console.log(ui.dim(`    Warn: ${warn}`));
+    }
+    for (const info of r.infos) {
+      console.log(ui.dim(`    [i] ${info}`));
     }
 
     if (r.valid) {

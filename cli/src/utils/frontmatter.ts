@@ -3,6 +3,8 @@ import { join } from "node:path";
 import type { SkillFrontmatter, ValidationResult } from "../types.js";
 
 const FM_DELIMITER = "---";
+export const MIN_DESC_LENGTH = 80;
+export const MAX_DESC_LENGTH = 1024;
 
 export function extractFrontmatter(content: string): { raw: string; body: string } | null {
   const lines = content.split("\n");
@@ -29,21 +31,24 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
 
   const lines = raw.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
+    const line = lines[i];
+    if (!line) continue;
+    const trimmed = line.trim();
     const nameMatch = trimmed.match(/^name:\s*["']?(.+?)["']?\s*$/);
-    if (nameMatch) {
+    if (nameMatch?.[1]) {
       name = nameMatch[1];
       name = name.replace(/^["']|["']$/g, "");
       continue;
     }
     const descMatch = trimmed.match(/^description:\s*(.*)$/);
-    if (descMatch) {
+    if (descMatch?.[1] !== undefined) {
       let value = descMatch[1].trim();
       // Handle YAML multiline markers: | or >
       if (value === "|" || value === ">") {
         const multilineLines: string[] = [];
         for (let j = i + 1; j < lines.length; j++) {
           const next = lines[j];
+          if (!next) break;
           // Continuation lines must be indented
           if (next.length > 0 && (next[0] === " " || next[0] === "\t")) {
             multilineLines.push(next.trim());
@@ -87,6 +92,7 @@ export function validateSkillDir(skillDir: string, skillName: string): Validatio
     valid: true,
     errors: [],
     warnings: [],
+    infos: [],
   };
 
   const skillMd = join(skillDir, "SKILL.md");
@@ -121,18 +127,18 @@ export function validateSkillDir(skillDir: string, skillName: string): Validatio
 
   if (!parsed.description) {
     result.warnings.push("Missing description in frontmatter");
-  } else if (parsed.description.length < 80) {
-    result.warnings.push(`Description too short (${parsed.description.length} chars, recommend 80+)`);
-  } else if (parsed.description.length > 1024) {
-    result.warnings.push(`Description too long (${parsed.description.length} chars, max 1024)`);
+  } else if (parsed.description.length < MIN_DESC_LENGTH) {
+    result.warnings.push(`Description too short (${parsed.description.length} chars, recommend ${MIN_DESC_LENGTH}+)`);
+  } else if (parsed.description.length > MAX_DESC_LENGTH) {
+    result.warnings.push(`Description too long (${parsed.description.length} chars, max ${MAX_DESC_LENGTH})`);
   }
 
   // Check for non-standard fields
   const standardFields = ["name", "description"];
   for (const line of extracted.raw.split("\n")) {
     const keyMatch = line.match(/^(\w[\w-]*):/);
-    if (keyMatch && !standardFields.includes(keyMatch[1])) {
-      result.warnings.push(`Non-standard field: ${keyMatch[1]}`);
+    if (keyMatch?.[1] && !standardFields.includes(keyMatch[1])) {
+      result.infos.push(`Non-standard field: ${keyMatch[1]}`);
     }
   }
 

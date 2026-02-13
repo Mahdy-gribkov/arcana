@@ -1,8 +1,9 @@
 import { createInterface } from "node:readline/promises";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { stdin, stdout } from "node:process";
 import { getInstallDir } from "../utils/fs.js";
+import { atomicWriteSync } from "../utils/atomic.js";
 import { ui, banner } from "../utils/ui.js";
 
 const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
@@ -66,8 +67,12 @@ export async function createCommand(name: string): Promise<void> {
     console.log(ui.warn(`\n  Description is short (${description.length} chars). Recommend 80+ for discoverability.`));
   }
 
+  if (description.length > 1024) {
+    console.log(ui.warn(`\n  Description is long (${description.length} chars). Max 1024 for marketplace.`));
+  }
+
   mkdirSync(skillDir, { recursive: true });
-  writeFileSync(join(skillDir, "SKILL.md"), generateSkillMd(name, description), "utf-8");
+  atomicWriteSync(join(skillDir, "SKILL.md"), generateSkillMd(name, description));
 
   console.log();
   console.log(ui.success(`  Created skill: ${ui.bold(name)}`));

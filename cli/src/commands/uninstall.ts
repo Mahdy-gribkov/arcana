@@ -1,10 +1,15 @@
+import { createInterface } from "node:readline/promises";
 import { existsSync, rmSync, readdirSync, lstatSync, readlinkSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { homedir } from "node:os";
+import { stdin, stdout } from "node:process";
 import { getInstallDir } from "../utils/fs.js";
 import { ui, banner } from "../utils/ui.js";
 
-export async function uninstallCommand(skillName: string): Promise<void> {
+export async function uninstallCommand(
+  skillName: string,
+  opts: { yes?: boolean } = {}
+): Promise<void> {
   banner();
 
   const installDir = getInstallDir();
@@ -14,6 +19,21 @@ export async function uninstallCommand(skillName: string): Promise<void> {
     console.log(ui.error(`  Skill "${skillName}" is not installed.`));
     console.log();
     process.exit(1);
+  }
+
+  if (!opts.yes) {
+    const rl = createInterface({ input: stdin, output: stdout });
+    let answer: string;
+    try {
+      answer = await rl.question(`  Uninstall ${ui.bold(skillName)}? (y/N): `);
+    } finally {
+      rl.close();
+    }
+    if (answer.trim().toLowerCase() !== "y" && answer.trim().toLowerCase() !== "yes") {
+      console.log(ui.dim("  Cancelled."));
+      console.log();
+      return;
+    }
   }
 
   // Remove skill directory

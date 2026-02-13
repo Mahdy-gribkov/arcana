@@ -72,7 +72,7 @@ async function updateOne(
     installSkill(skillName, files);
     writeSkillMeta(skillName, { version: remote.version, installedAt: new Date().toISOString(), source: providerName });
 
-    s.succeed(`Updated ${ui.bold(skillName)} to v${remote.version}`);
+    s.succeed(`Updated ${ui.bold(skillName)} to v${remote.version} (${files.length} files)`);
     console.log();
   } catch (err) {
     s.fail(`Failed to update ${skillName}`);
@@ -99,13 +99,16 @@ async function updateAll(installDir: string, providerName: string): Promise<void
   let updated = 0;
   let upToDate = 0;
   let notFound = 0;
+  let errors = 0;
 
-  try {
-    const providers = getProviders(providerName === "arcana" ? undefined : providerName);
+  const providers = getProviders(providerName === "arcana" ? undefined : providerName);
 
-    for (const skillName of installed) {
-      let found = false;
+  const total = installed.length;
+  for (let i = 0; i < total; i++) {
+    const skillName = installed[i]!;
+    let found = false;
 
+    try {
       for (const provider of providers) {
         const remote = await provider.info(skillName);
         if (!remote) continue;
@@ -117,24 +120,24 @@ async function updateAll(installDir: string, providerName: string): Promise<void
           break;
         }
 
-        s.text = `Updating ${ui.bold(skillName)}...`;
+        s.text = `Updating ${ui.bold(skillName)} (${i + 1}/${total})...`;
         const files = await provider.fetch(skillName);
         installSkill(skillName, files);
         writeSkillMeta(skillName, { version: remote.version, installedAt: new Date().toISOString(), source: provider.name });
         updated++;
         break;
       }
-
-      if (!found) notFound++;
+    } catch (err) {
+      errors++;
+      if (err instanceof Error) console.error(ui.dim(`  Failed to update ${skillName}: ${err.message}`));
+      continue;
     }
 
-    s.succeed(`Update complete`);
-    console.log(ui.dim(`  ${updated} updated, ${upToDate} up to date, ${notFound} not in provider`));
-    console.log();
-  } catch (err) {
-    s.fail("Update failed");
-    if (err instanceof Error) console.error(ui.dim(`  ${err.message}`));
-    console.log();
-    process.exit(1);
+    if (!found) notFound++;
   }
+
+  s.succeed(`Update complete`);
+  console.log(ui.dim(`  ${updated} updated, ${upToDate} up to date, ${notFound} not in provider${errors > 0 ? `, ${errors} failed` : ""}`));
+  console.log();
+  if (errors > 0) process.exit(1);
 }

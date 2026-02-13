@@ -1,6 +1,36 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
-.claude/
+*.egg-info/
+.venv/
+.coverage
+htmlcov/
+
+# Node
 cli/node_modules/
 cli/dist/
+*.tgz
+.npmrc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Claude
+.claude/

@@ -61,7 +61,7 @@ function formatBytes(bytes: number): string {
 }
 
 export async function statsCommand(opts: { json?: boolean }): Promise<void> {
-  banner();
+  if (!opts.json) banner();
 
   const sessions = discoverSessions();
 
@@ -84,8 +84,8 @@ export async function statsCommand(opts: { json?: boolean }): Promise<void> {
   const sorted = [...sessions].sort(
     (a, b) => b.modified.getTime() - a.modified.getTime(),
   );
-  const newest = sorted[0];
-  const oldest = sorted[sorted.length - 1];
+  const newest = sorted[0]!;
+  const oldest = sorted[sorted.length - 1]!;
 
   // Sessions per project (top 5)
   const projectCounts = new Map<string, number>();

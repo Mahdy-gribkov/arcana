@@ -30,6 +30,10 @@ This policy covers:
 - Secrets or credentials accidentally committed
 - Supply chain issues in dependencies
 
+## Disclosure Timeline
+
+We target a 90-day disclosure timeline from initial report to public advisory.
+
 ## What Does Not Count
 
 - Skills that produce incorrect output (that is a bug, not a security issue)

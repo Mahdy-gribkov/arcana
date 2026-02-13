@@ -114,7 +114,7 @@ cp -r arcana/skills/* ~/.agents/skills/
 
 ## Compatibility
 
-These skills follow the open Agent Skills standard (December 2025).
+These skills follow the open Agent Skills standard, established December 2025.
 
 | Platform | Status |
 |----------|--------|

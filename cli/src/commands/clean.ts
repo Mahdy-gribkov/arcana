@@ -12,6 +12,8 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
 
   let totalReclaimed = 0;
   let actions = 0;
+  let brokenSymlinks = 0;
+  let staleProjects = 0;
 
   // 1. Clean broken symlinks
   const symlinkDir = join(homedir(), ".claude", "skills");
@@ -25,6 +27,7 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
           if (!existsSync(target)) {
             if (!dryRun) rmSync(fullPath);
             console.log(`  ${ui.dim("Remove broken symlink:")} ${entry}`);
+            brokenSymlinks++;
             actions++;
           }
         }
@@ -58,6 +61,7 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
         const mb = (size / (1024 * 1024)).toFixed(1);
         if (!dryRun) rmSync(projDir, { recursive: true, force: true });
         console.log(`  ${ui.dim("Remove stale project data:")} ${entry} ${ui.dim(`(${mb} MB, ${Math.floor(daysOld)}d old)`)}`);
+        staleProjects++;
         actions++;
       }
     }
@@ -69,7 +73,10 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
     const verb = dryRun ? "Would reclaim" : "Reclaimed";
     console.log(ui.success(`  ${actions} items cleaned. ${verb} ${mb} MB.`));
   } else {
-    console.log(ui.success("  Nothing to clean. Environment is tidy."));
+    console.log(ui.dim("  Checked:"));
+    console.log(ui.dim(`  - Broken symlinks in ~/.claude/skills/: ${brokenSymlinks} found`));
+    console.log(ui.dim(`  - Stale project data in ~/.claude/projects/: ${staleProjects} found`));
+    console.log(ui.success("  Nothing to clean."));
   }
   console.log();
 }

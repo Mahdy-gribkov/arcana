@@ -1,6 +1,6 @@
 {
   "name": "@mahdy-gribkov/arcana",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.",
   "bin": {
     "arcana": "dist/index.js"
@@ -27,9 +27,13 @@
   "author": "Mahdy Gribkov",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mahdy-gribkov/arcana.git"
+    "url": "git+https://github.com/mahdy-gribkov/arcana.git",
+    "directory": "cli"
   },
-  "homepage": "https://mahdygribkov.vercel.app",
+  "homepage": "https://github.com/mahdy-gribkov/arcana",
+  "bugs": {
+    "url": "https://github.com/mahdy-gribkov/arcana/issues"
+  },
   "files": [
     "dist/**/*",
     "package.json"

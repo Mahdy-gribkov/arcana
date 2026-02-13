@@ -23,6 +23,8 @@ jobs:
 
       - run: npm ci
       - run: npx tsc
+      - name: Smoke test
+        run: node dist/index.js --version
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

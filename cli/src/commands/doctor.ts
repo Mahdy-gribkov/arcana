@@ -77,6 +77,8 @@ function checkArcanaConfig(): DoctorCheck {
   }
 }
 
+const DISK_USAGE_THRESHOLD_MB = 500;
+
 function checkDiskUsage(): DoctorCheck {
   const projectsDir = join(homedir(), ".claude", "projects");
   if (!existsSync(projectsDir)) {
@@ -96,8 +98,8 @@ function checkDiskUsage(): DoctorCheck {
   } catch { /* skip */ }
 
   const mb = (totalSize / (1024 * 1024)).toFixed(1);
-  if (totalSize > 500 * 1024 * 1024) {
-    return { name: "Disk usage", status: "warn", message: `${mb} MB across ${dirCount} projects`, fix: "Run: arcana clean" };
+  if (totalSize > DISK_USAGE_THRESHOLD_MB * 1024 * 1024) {
+    return { name: "Disk usage", status: "warn", message: `${mb} MB across ${dirCount} projects (threshold: ${DISK_USAGE_THRESHOLD_MB} MB)`, fix: "Run: arcana clean" };
   }
   return { name: "Disk usage", status: "pass", message: `${mb} MB across ${dirCount} projects` };
 }

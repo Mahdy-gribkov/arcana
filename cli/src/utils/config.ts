@@ -27,15 +27,24 @@ export function loadConfig(): ArcanaConfig {
   try {
     const raw = readFileSync(CONFIG_PATH, "utf-8");
     const loaded = JSON.parse(raw) as Partial<ArcanaConfig>;
-    return {
+    const config: ArcanaConfig = {
       ...DEFAULT_CONFIG,
       ...loaded,
       providers: loaded.providers ?? DEFAULT_CONFIG.providers,
     };
+    return applyEnvOverrides(config);
   } catch {
     console.error(ui.warn("  Warning: Config file is corrupted, using defaults"));
-    return DEFAULT_CONFIG;
+    return applyEnvOverrides(DEFAULT_CONFIG);
   }
+}
+
+function applyEnvOverrides(config: ArcanaConfig): ArcanaConfig {
+  const envInstallDir = process.env.ARCANA_INSTALL_DIR;
+  if (envInstallDir) config.installDir = envInstallDir;
+  const envProvider = process.env.ARCANA_DEFAULT_PROVIDER;
+  if (envProvider) config.defaultProvider = envProvider;
+  return config;
 }
 
 export function saveConfig(config: ArcanaConfig): void {

@@ -31,6 +31,8 @@ export function createCli(): Command {
     .description("List available skills")
     .option("-p, --provider <name>", "Provider to list from")
     .option("-a, --all", "List from all providers")
+    .option("--installed", "Show only installed skills")
+    .option("--no-cache", "Bypass skill cache")
     .action((opts) => listCommand(opts));
 
   program
@@ -38,6 +40,7 @@ export function createCli(): Command {
     .description("Install a skill")
     .option("-p, --provider <name>", "Provider to install from")
     .option("-a, --all", "Install all skills")
+    .option("--dry-run", "Show what would be installed without installing")
     .action((skill, opts) => installCommand(skill, opts));
 
   program
@@ -50,6 +53,7 @@ export function createCli(): Command {
     .command("search <query>")
     .description("Search for skills across providers")
     .option("-p, --provider <name>", "Limit search to provider")
+    .option("--no-cache", "Bypass skill cache")
     .action((query, opts) => searchCommand(query, opts));
 
   program
@@ -81,12 +85,13 @@ export function createCli(): Command {
   program
     .command("uninstall <skill>")
     .description("Uninstall a skill")
-    .action((skill) => uninstallCommand(skill));
+    .option("-y, --yes", "Skip confirmation prompt")
+    .action((skill, opts) => uninstallCommand(skill, opts));
 
   program
     .command("init")
     .description("Initialize arcana in current project")
-    .option("-t, --tool <name>", "Target tool (claude, cursor, codex, gemini, antigravity, windsurf, aider)")
+    .option("-t, --tool <name>", "Target tool (claude, cursor, codex, gemini, antigravity, windsurf, aider, all)")
     .action((opts) => initCommand(opts));
 
   program

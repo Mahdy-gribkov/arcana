@@ -1,6 +1,7 @@
 import { ui, banner, table, spinner } from "../utils/ui.js";
 import { loadConfig, addProvider, removeProvider } from "../utils/config.js";
 import { httpGet, HttpError } from "../utils/http.js";
+import { parseProviderSlug } from "../registry.js";
 
 export async function providersCommand(opts: {
   add?: string;
@@ -9,22 +10,15 @@ export async function providersCommand(opts: {
   banner();
 
   if (opts.add) {
-    const parts = opts.add.split("/");
-    if (parts.length !== 2) {
-      console.log(ui.error("  Format: owner/repo (e.g. user/skills-repo)"));
-      console.log();
-      process.exit(1);
-    }
-    const name = parts.join("/");
+    const { owner, repo } = parseProviderSlug(opts.add);
+    const name = `${owner}/${repo}`;
     const s = spinner(`Validating ${opts.add}...`);
     s.start();
     try {
-      const [owner, repo] = parts;
       await httpGet(`https://raw.githubusercontent.com/${owner}/${repo}/main/.claude-plugin/marketplace.json`);
       s.succeed(`Provider ${opts.add} verified`);
     } catch {
       try {
-        const [owner, repo] = parts;
         await httpGet(`https://raw.githubusercontent.com/${owner}/${repo}/master/.claude-plugin/marketplace.json`);
         s.succeed(`Provider ${opts.add} verified`);
       } catch {

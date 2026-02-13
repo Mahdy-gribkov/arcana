@@ -18,9 +18,11 @@ export async function configCommand(
   if (!action || action === "list") {
     const config = loadConfig();
     console.log(ui.bold("  Configuration\n"));
+    const envInstallDir = process.env.ARCANA_INSTALL_DIR;
+    const envProvider = process.env.ARCANA_DEFAULT_PROVIDER;
     const rows: string[][] = [
-      [ui.dim("defaultProvider"), config.defaultProvider],
-      [ui.dim("installDir"), config.installDir],
+      [ui.dim("defaultProvider"), config.defaultProvider + (envProvider ? ` ${ui.warn("(overridden by ARCANA_DEFAULT_PROVIDER)")}` : "")],
+      [ui.dim("installDir"), config.installDir + (envInstallDir ? ` ${ui.warn("(overridden by ARCANA_INSTALL_DIR)")}` : "")],
       [ui.dim("providers"), config.providers.map(p => p.name).join(", ")],
     ];
     table(rows);
@@ -66,9 +68,22 @@ export async function configCommand(
 
   // Set value
   if (key === "installDir") {
+    if (value === "") {
+      console.log(ui.error("  installDir cannot be empty"));
+      console.log();
+      process.exit(1);
+    }
     const { isAbsolute } = await import("node:path");
     if (!isAbsolute(value)) {
       console.log(ui.warn(`  Warning: "${value}" is not an absolute path`));
+    }
+  }
+  if (key === "defaultProvider") {
+    const providerNames = config.providers.map(p => p.name);
+    if (!providerNames.includes(value)) {
+      console.log(ui.error(`  Provider '${value}' not configured. Add it first with: arcana providers --add owner/repo`));
+      console.log();
+      process.exit(1);
     }
   }
   (config as unknown as Record<string, unknown>)[key] = value;
