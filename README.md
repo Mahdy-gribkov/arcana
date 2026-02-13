@@ -66,29 +66,30 @@ A collection of agent skills that follow the open [Agent Skills standard](https:
 
 ## CLI
 
-Arcana includes a universal CLI that installs skills from multiple sources. Provider/adapter pattern lets you add custom skill repos.
+Arcana is also a universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.
 
 ```bash
-# Install one skill
-npx @mahdy-gribkov/arcana install golang-pro
+# Skills
+npx arcana install golang-pro        # Install a skill
+npx arcana install --all             # Install all skills
+npx arcana list                      # List available skills
+npx arcana search "code review"      # Search across providers
+npx arcana info codebase-dissection  # Show skill details
+npx arcana create my-skill           # Create a new skill
+npx arcana validate --all --fix      # Validate and fix all skills
+npx arcana update --all              # Update all installed skills
+npx arcana uninstall old-skill       # Remove a skill
 
-# Install all skills
-npx @mahdy-gribkov/arcana install --all
+# Environment
+npx arcana init                      # Scaffold AI tool config (CLAUDE.md, .cursor/rules/, etc.)
+npx arcana doctor                    # Diagnose environment issues
+npx arcana clean --dry-run           # Preview cleanup of stale data
+npx arcana stats                     # Session analytics and token usage
+npx arcana config list               # View configuration
 
-# List available skills
-npx @mahdy-gribkov/arcana list
-
-# Search across providers
-npx @mahdy-gribkov/arcana search "code review"
-
-# Show skill details
-npx @mahdy-gribkov/arcana info codebase-dissection
-
-# Add a third-party skill repo
-npx @mahdy-gribkov/arcana providers --add someone/their-skills
-
-# List from a specific provider
-npx @mahdy-gribkov/arcana list --provider someone/their-skills
+# Providers
+npx arcana providers --add someone/their-skills
+npx arcana list --provider someone/their-skills
 ```
 
 Skills are installed to `~/.agents/skills/`, the standard location for all compatible tools.

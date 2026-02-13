@@ -38,3 +38,29 @@ export interface ArcanaConfig {
   installDir: string;
   providers: ProviderConfig[];
 }
+
+export interface SkillFrontmatter {
+  name: string;
+  description: string;
+}
+
+export interface ValidationResult {
+  skill: string;
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  fixed?: boolean;
+}
+
+export interface SkillMeta {
+  version: string;
+  installedAt: string;
+  source: string;
+}
+
+export interface DoctorCheck {
+  name: string;
+  status: "pass" | "warn" | "fail";
+  message: string;
+  fix?: string;
+}

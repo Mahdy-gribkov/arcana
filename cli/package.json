@@ -1,7 +1,7 @@
 {
   "name": "@mahdy-gribkov/arcana",
-  "version": "2.0.1",
-  "description": "Universal agent skill package manager. Install skills from multiple sources into any AI coding tool.",
+  "version": "2.0.2",
+  "description": "Universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.",
   "bin": {
     "arcana": "dist/index.js"
   },
@@ -18,7 +18,10 @@
     "codex",
     "ai",
     "skills",
-    "cli"
+    "cli",
+    "diagnostics",
+    "scaffolding",
+    "analytics"
   ],
   "license": "MIT",
   "author": "Mahdy Gribkov",

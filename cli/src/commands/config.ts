@@ -1,0 +1,70 @@
+import { existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { loadConfig, saveConfig } from "../utils/config.js";
+import { ui, banner, table } from "../utils/ui.js";
+
+const VALID_KEYS = ["defaultProvider", "installDir"] as const;
+type ConfigKey = (typeof VALID_KEYS)[number];
+
+export async function configCommand(
+  action: string | undefined,
+  value: string | undefined
+): Promise<void> {
+  banner();
+
+  // arcana config list (or no args)
+  if (!action || action === "list") {
+    const config = loadConfig();
+    console.log(ui.bold("  Configuration\n"));
+    const rows: string[][] = [
+      [ui.dim("defaultProvider"), config.defaultProvider],
+      [ui.dim("installDir"), config.installDir],
+      [ui.dim("providers"), config.providers.map(p => p.name).join(", ")],
+    ];
+    table(rows);
+    console.log();
+    const configPath = join(homedir(), ".arcana", "config.json");
+    console.log(ui.dim(`  Config file: ${configPath}`));
+    console.log(ui.dim(`  ${existsSync(configPath) ? "Custom config" : "Using defaults"}`));
+    console.log();
+    return;
+  }
+
+  // arcana config reset
+  if (action === "reset") {
+    const configPath = join(homedir(), ".arcana", "config.json");
+    if (existsSync(configPath)) {
+      rmSync(configPath);
+      console.log(ui.success("  Config reset to defaults"));
+    } else {
+      console.log(ui.dim("  Already using defaults"));
+    }
+    console.log();
+    return;
+  }
+
+  // arcana config <key> [value]
+  if (!VALID_KEYS.includes(action as ConfigKey)) {
+    console.log(ui.error(`  Unknown config key: ${action}`));
+    console.log(ui.dim(`  Valid keys: ${VALID_KEYS.join(", ")}`));
+    console.log();
+    process.exit(1);
+  }
+
+  const config = loadConfig();
+  const key = action as ConfigKey;
+
+  if (value === undefined) {
+    // Get value
+    console.log(`  ${key} = ${config[key]}`);
+    console.log();
+    return;
+  }
+
+  // Set value
+  (config as unknown as Record<string, unknown>)[key] = value;
+  saveConfig(config);
+  console.log(ui.success(`  Set ${key} = ${value}`));
+  console.log();
+}

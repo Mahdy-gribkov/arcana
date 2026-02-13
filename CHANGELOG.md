@@ -1,6 +1,31 @@
 # Changelog
 
-## 3.0.0 (2026-02-13)
+## 2.0.2 (2026-02-13)
+
+Expanded CLI from skill installer to AI development tool. 8 new commands for skill lifecycle, environment management, diagnostics, and analytics.
+
+### Added - CLI Commands (8)
+- `arcana create <name>` - Interactive skill scaffolding with frontmatter validation
+- `arcana validate [skill] [--all] [--fix]` - Validate SKILL.md structure, auto-fix broken frontmatter
+- `arcana update [skill] [--all]` - Update installed skills from provider
+- `arcana uninstall <skill>` - Remove skill + associated symlinks
+- `arcana init [--tool claude|cursor|codex|gemini|all]` - Scaffold AI tool config for current project
+- `arcana doctor` - 7 diagnostic checks (Node version, skills, symlinks, git, config, disk, health)
+- `arcana clean [--dry-run]` - Prune broken symlinks and stale project data
+- `arcana stats [--json]` - Session analytics (session count, tokens, active projects)
+- `arcana config [key] [value] | list | reset` - Get/set arcana configuration
+
+### Added - Utilities
+- `utils/frontmatter.ts` - SKILL.md parsing, validation, and auto-fixing
+- `utils/fs.ts` - Skill metadata tracking (`.arcana-meta.json`)
+- `types.ts` - SkillFrontmatter, ValidationResult, SkillMeta, DoctorCheck interfaces
+
+### Changed
+- CLI: 5 commands -> 14 commands (including help)
+- Total code: ~800 lines -> ~2,000 lines
+- Description: "Universal AI development CLI"
+
+## 2.0.1 (2026-02-13)
 
 Tripled skill count. Added 36 new skills across 15 categories, batch publishing pipeline, and automation tooling.
 
