@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "agent-skills",
@@ -27,7 +28,8 @@
   },
   "homepage": "https://mahdygribkov.vercel.app",
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "package.json"
   ],
   "type": "module",
   "engines": {

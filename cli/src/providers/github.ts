@@ -2,10 +2,19 @@ import https from "node:https";
 import { Provider } from "./base.js";
 import type { SkillInfo, SkillFile, MarketplaceData } from "../types.js";
 
+const VALID_SLUG = /^[a-zA-Z0-9_.-]+$/;
+const MAX_REDIRECTS = 5;
+
 interface GitHubTreeItem {
   path: string;
   type: string;
   url: string;
+}
+
+export function validateSlug(value: string, label: string): void {
+  if (!VALID_SLUG.test(value)) {
+    throw new Error(`Invalid ${label}: "${value}". Only letters, numbers, hyphens, dots, underscores allowed.`);
+  }
 }
 
 export class GitHubProvider extends Provider {
@@ -22,6 +31,8 @@ export class GitHubProvider extends Provider {
     opts?: { name?: string; displayName?: string; branch?: string }
   ) {
     super();
+    validateSlug(owner, "owner");
+    validateSlug(repo, "repo");
     this.owner = owner;
     this.repo = repo;
     this.branch = opts?.branch ?? "master";
@@ -29,8 +40,13 @@ export class GitHubProvider extends Provider {
     this.displayName = opts?.displayName ?? `${owner}/${repo}`;
   }
 
-  private httpGet(url: string): Promise<string> {
+  private httpGet(url: string, redirectCount = 0): Promise<string> {
     return new Promise((resolve, reject) => {
+      if (redirectCount >= MAX_REDIRECTS) {
+        reject(new Error(`Too many redirects (${MAX_REDIRECTS}) for ${url}`));
+        return;
+      }
+
       const req = https.get(
         url,
         { headers: { "User-Agent": "arcana-cli", Accept: "application/json" } },
@@ -38,7 +54,7 @@ export class GitHubProvider extends Provider {
           if (res.statusCode === 301 || res.statusCode === 302) {
             const location = res.headers.location;
             if (location) {
-              this.httpGet(location).then(resolve, reject);
+              this.httpGet(location, redirectCount + 1).then(resolve, reject);
               return;
             }
           }
@@ -59,12 +75,24 @@ export class GitHubProvider extends Provider {
     });
   }
 
+  private parseJSON<T>(raw: string, context: string): T {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      throw new Error(`Failed to parse response from ${context}. The server may be down or returned invalid data.`);
+    }
+  }
+
   async list(): Promise<SkillInfo[]> {
     if (this.cache) return this.cache;
 
     const url = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/.claude-plugin/marketplace.json`;
     const raw = await this.httpGet(url);
-    const data: MarketplaceData = JSON.parse(raw);
+    const data = this.parseJSON<MarketplaceData>(raw, `${this.name}/marketplace.json`);
+
+    if (!data.plugins || !Array.isArray(data.plugins)) {
+      throw new Error(`Invalid marketplace.json in ${this.name}: missing plugins array`);
+    }
 
     this.cache = data.plugins.map((p) => ({
       name: p.name,
@@ -78,14 +106,15 @@ export class GitHubProvider extends Provider {
   }
 
   async fetch(skillName: string): Promise<SkillFile[]> {
+    validateSlug(skillName, "skill name");
+
     const treeUrl = `https://api.github.com/repos/${this.owner}/${this.repo}/git/trees/${this.branch}?recursive=1`;
     const raw = await this.httpGet(treeUrl);
-    const tree = JSON.parse(raw);
+    const tree = this.parseJSON<{ tree: GitHubTreeItem[] }>(raw, `${this.name}/tree`);
 
     const prefix = `skills/${skillName}/`;
-    const files: GitHubTreeItem[] = tree.tree.filter(
-      (item: GitHubTreeItem) =>
-        item.path.startsWith(prefix) && item.type === "blob"
+    const files = tree.tree.filter(
+      (item) => item.path.startsWith(prefix) && item.type === "blob"
     );
 
     if (files.length === 0) {

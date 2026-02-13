@@ -1,3 +1,4 @@
+import type { Provider } from "../providers/base.js";
 import { ui, banner, spinner } from "../utils/ui.js";
 import { installSkill, getInstallDir, isSkillInstalled } from "../utils/fs.js";
 import { getProvider, getProviders } from "../registry.js";
@@ -26,10 +27,7 @@ export async function installCommand(
   }
 }
 
-async function installOne(
-  skillName: string,
-  provider: { name: string; fetch: (name: string) => Promise<{ path: string; content: string }[]>; }
-): Promise<void> {
+async function installOne(skillName: string, provider: Provider): Promise<void> {
   if (isSkillInstalled(skillName)) {
     console.log(ui.warn(`  ${skillName} is already installed. Updating...`));
   }
@@ -55,9 +53,7 @@ async function installOne(
   }
 }
 
-async function installAll(
-  providers: Array<{ name: string; list: () => Promise<{ name: string }[]>; fetch: (name: string) => Promise<{ path: string; content: string }[]>; }>
-): Promise<void> {
+async function installAll(providers: Provider[]): Promise<void> {
   const s = spinner("Fetching skill list...");
   s.start();
 
@@ -69,6 +65,10 @@ async function installAll(
       const skills = await provider.list();
 
       for (const skill of skills) {
+        if (isSkillInstalled(skill.name)) {
+          skipped++;
+          continue;
+        }
         s.text = `Installing ${ui.bold(skill.name)} from ${ui.dim(provider.name)}...`;
         const files = await provider.fetch(skill.name);
         installSkill(skill.name, files);
@@ -83,6 +83,10 @@ async function installAll(
     console.log();
   } catch (err) {
     s.fail("Installation failed");
-    throw err;
+    if (err instanceof Error) {
+      console.error(ui.dim(`  ${err.message}`));
+    }
+    console.log();
+    process.exit(1);
   }
 }

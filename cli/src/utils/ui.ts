@@ -23,16 +23,28 @@ export function spinner(text: string): Ora {
   return ora({ text, color: "yellow" });
 }
 
+const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
+
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_REGEX, "");
+}
+
+function padWithAnsi(str: string, width: number): string {
+  const visible = stripAnsi(str).length;
+  const padding = Math.max(0, width - visible);
+  return str + " ".repeat(padding);
+}
+
 export function table(rows: string[][]): void {
   if (rows.length === 0) return;
 
   const colWidths = rows[0].map((_, colIdx) =>
-    Math.max(...rows.map((row) => (row[colIdx] ?? "").length))
+    Math.max(...rows.map((row) => stripAnsi(row[colIdx] ?? "").length))
   );
 
   for (const row of rows) {
     const line = row
-      .map((cell, i) => cell.padEnd(colWidths[i] + 2))
+      .map((cell, i) => padWithAnsi(cell, colWidths[i] + 2))
       .join("")
       .trimEnd();
     console.log("  " + line);
