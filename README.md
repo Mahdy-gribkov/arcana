@@ -28,16 +28,45 @@ A collection of agent skills that follow the open [Agent Skills standard](https:
 | [find-skills](skills/find-skills/) | Meta | Discover and install skills from the ecosystem |
 | [project-migration](skills/project-migration/) | Migration | Move project folders without losing session data |
 
-## Quick Start
+## CLI
 
-**Option 1: Install via Claude Code**
+Arcana includes a universal CLI that installs skills from multiple sources. Provider/adapter pattern lets you add custom skill repos.
+
 ```bash
-/install mahdy-gribkov/arcana
+# Install one skill
+npx @mahdy-gribkov/arcana install golang-pro
+
+# Install all skills
+npx @mahdy-gribkov/arcana install --all
+
+# List available skills
+npx @mahdy-gribkov/arcana list
+
+# Search across providers
+npx @mahdy-gribkov/arcana search "code review"
+
+# Show skill details
+npx @mahdy-gribkov/arcana info codebase-dissection
+
+# Add a third-party skill repo
+npx @mahdy-gribkov/arcana providers --add someone/their-skills
+
+# List from a specific provider
+npx @mahdy-gribkov/arcana list --provider someone/their-skills
 ```
 
-**Option 2: Install via npx**
+Skills are installed to `~/.agents/skills/`, the standard location for all compatible tools.
+
+## Quick Start
+
+**Option 1: CLI (recommended)**
 ```bash
 npx @mahdy-gribkov/arcana install --all
+```
+
+**Option 2: Claude Code**
+```bash
+/install mahdy-gribkov/arcana
 ```
 
 **Option 3: Manual**
