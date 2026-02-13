@@ -1,10 +1,6 @@
 ---
 name: codebase-dissection
-version: "1.0.0"
-description: |
-  Systematic methodology for analyzing, understanding, and diagnosing problems in any codebase.
-  Covers architecture mapping, data flow analysis, dead code detection, concurrency auditing,
-  and actionable remediation planning.
+description: Systematic methodology for analyzing, understanding, and diagnosing problems in any codebase. Covers architecture mapping, data flow analysis, dead code detection, concurrency auditing, and actionable remediation planning.
 ---
 
 # Codebase Dissection Skill
