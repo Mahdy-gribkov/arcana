@@ -1,166 +1,197 @@
-# Arcana
+<p align="center">
+  <img src="assets/banner.svg" alt="arcana" width="600"/>
+</p>
 
-Agent skills that work across AI coding tools. Drop them into your tools directory and they just work. No configuration. No dependencies. Plain markdown and Python scripts.
+<p align="center">
+  <strong>The AI development toolkit.</strong><br/>
+  Skills, scripts, diagnostics, and security scanning for every coding agent.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-60-blue.svg)](#skills)
-[![Platforms](https://img.shields.io/badge/Platforms-7-green.svg)](#compatibility)
+<p align="center">
+  <a href="https://www.npmjs.com/package/@mahdy-gribkov/arcana"><img src="https://img.shields.io/npm/v/@mahdy-gribkov/arcana?style=for-the-badge&color=d4943a" alt="npm"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4943a?style=for-the-badge" alt="MIT"/></a>
+  <a href="#skills"><img src="https://img.shields.io/badge/Skills-59-d4943a?style=for-the-badge" alt="Skills"/></a>
+  <a href="#compatibility"><img src="https://img.shields.io/badge/Platforms-7-d4943a?style=for-the-badge" alt="Platforms"/></a>
+</p>
 
-## What Is This
+---
 
-A collection of agent skills that follow the open [Agent Skills standard](https://docs.anthropic.com/en/docs/agents/skills). They are not tied to one tool. Install them on Claude Code, Codex CLI, Cursor, Gemini CLI, or any compatible agent. Each skill teaches your AI assistant how to handle a specific task or workflow.
+## What Makes Arcana Different
+
+**59 battle-tested skills** with code examples, BAD/GOOD pairs, and procedural workflows in every section. Not capability lists. Not vague instructions. Real patterns you can copy.
+
+**Validation scripts** that run as zero-cost automation. Security review checks generated auth code. Database design lints migration files. TypeScript scans for `any` usage. All executed, never loaded as context.
+
+**Environment management.** `doctor` diagnoses issues. `clean` removes stale data. `stats` shows session analytics. `init` scaffolds config for 7 platforms. `validate` catches broken skills before they waste tokens.
+
+**Multi-platform.** Same skills work on Claude Code, Cursor, Codex CLI, Gemini CLI, Windsurf, Antigravity, and Aider.
+
+## Quick Start
+
+```bash
+# Install globally
+npm i -g @mahdy-gribkov/arcana
+
+# Install all 59 skills
+arcana install --all
+
+# Or install specific skills
+arcana install golang-pro security-review typescript-advanced
+```
+
+Or without installing:
+```bash
+npx @mahdy-gribkov/arcana install --all
+```
+
+Skills are installed to `~/.agents/skills/`, the standard location for all compatible tools.
+
+## CLI Commands
+
+### Skills
+
+| Command | Description |
+|---------|-------------|
+| `arcana install <skill>` | Install a skill |
+| `arcana install --all` | Install all skills |
+| `arcana uninstall <skill>` | Remove a skill |
+| `arcana update --all` | Update all installed skills |
+| `arcana list` | List available skills |
+| `arcana search <query>` | Search across providers |
+| `arcana info <skill>` | Show skill details |
+| `arcana create <name>` | Create a new skill |
+| `arcana validate --all --fix` | Validate and fix all skills |
+
+### Environment
+
+| Command | Description |
+|---------|-------------|
+| `arcana init` | Scaffold AI tool config (CLAUDE.md, .cursor/rules/, etc.) |
+| `arcana doctor` | Diagnose environment issues |
+| `arcana clean --dry-run` | Preview cleanup of stale data |
+| `arcana stats` | Session analytics and token usage |
+| `arcana config list` | View configuration |
+
+### Providers
+
+```bash
+arcana providers --add someone/their-skills
+arcana list --provider someone/their-skills
+```
+
+All commands support `--json` for machine-readable output and respect `NO_COLOR`.
 
 ## Skills
 
 | Skill | Category | Description |
 |-------|----------|-------------|
-| api-design | API | REST API and GraphQL design best practices including resource naming, HTTP methods, status codes, pagination (cursor vs ... |
-| api-testing | API | API testing expertise covering contract testing with Pact, API mocking with MSW and Prism, load testing with k6 and Locust... |
-| code-reviewer | Code Quality | Use this skill to review code. It supports both local changes (staged or working tree) |
-| codebase-dissection | Code Quality | Systematic methodology for analyzing, understanding, and diagnosing problems in any codebase. Covers architecture mappin... |
-| frontend-code-review | Code Quality | "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change rev... |
-| database-design | Database | Database architecture and query optimization for PostgreSQL and SQLite. Covers schema design, normalization to 3NF, deno... |
-| frontend-design | Design | Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to ... |
-| container-security | DevOps | Container security including image scanning with Trivy and Grype, minimal base images, rootless containers, supply chain... |
-| cost-optimization | DevOps | Cloud and infrastructure cost optimization covering container right-sizing, CDN caching, database query cost analysis... |
-| ci-cd-automation | DevOps | Continuous integration and deployment pipelines, automated testing, build automation, and team workflows for game develo... |
-| ci-cd-pipelines | DevOps | GitHub Actions and GitLab CI/CD pipeline expertise. Workflow syntax, job matrix, dependency caching (npm, pip, go, docke... |
-| docker-kubernetes | DevOps | Production Docker and Kubernetes patterns including multi-stage builds, minimal base images, non-root users, layer cachi... |
-| dependency-audit | DevOps | Dependency auditing covering npm audit, go mod tidy, pip-audit, license compliance, lockfile hygiene, Dependabot config... |
-| doc-generation | Documentation | Documentation generation from code including OpenAPI, GraphQL schema docs, Mermaid diagrams, changelog automation... |
-| env-config | DevOps | Environment configuration patterns covering .env management, validation with Zod/envalid, 12-factor config, Docker env... |
-| update-docs | Documentation | This skill should be used when the user asks to "update documentation for my changes", "check docs for this PR", "what d... |
-| docx | Documents | "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers incl... |
-| xlsx | Documents | "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to:... |
-| fullstack-developer | Full-Stack | Modern web development expertise covering React, Node.js, databases, and full-stack architecture. Use when: building web... |
-| asset-optimization | Game Dev | Asset pipeline optimization, compression, streaming, and resource management for efficient game development and delivery... |
-| audio-systems | Game Dev | Game audio systems, music, spatial audio, sound effects, and voice implementation. Build immersive audio experiences wit... |
-| daw-music | Game Dev | Digital Audio Workstation usage, music composition, interactive music systems, and game audio implementation for immersi... |
-| game-design-theory | Game Dev | Comprehensive game design theory covering MDA framework, player psychology, balance principles, and progression systems.... |
-| game-engines | Game Dev | Master game engines - Unity, Unreal Engine, Godot. Engine-specific workflows, systems architecture, and production best ... |
-| game-servers | Game Dev | Game server architecture, scalability, matchmaking, and backend systems for online games. Build robust, scalable multipl... |
-| game-tools-workflows | Game Dev | Game development tools, asset pipelines, version control, build systems, and team development workflows for efficient pr... |
-| gameplay-mechanics | Game Dev | Core gameplay mechanics implementation, system interactions, feedback loops, and iterative balance refinement for engagi... |
-| graphics-rendering | Game Dev | 3D graphics, shaders, VFX, lighting, rendering optimization. Create stunning visuals with production-ready techniques. |
-| level-design | Game Dev | Level design fundamentals, pacing, difficulty progression, environmental storytelling, and spatial design for engaging g... |
-| memory-management | Game Dev | Game memory optimization, object pooling, garbage collection tuning, and efficient resource management for target platfo... |
-| monetization-systems | Game Dev | Game monetization strategies, in-app purchases, battle passes, ads integration, and player retention mechanics. Ethical ... |
-| networking-servers | Game Dev | Multiplayer systems, netcode, game servers, synchronization, and anti-cheat. Build scalable, responsive multiplayer expe... |
-| particle-systems | Game Dev | Creating visual effects using particle systems, physics simulation, and post-processing for polished, dynamic game graph... |
-| programming-architecture | Game Dev | Game code architecture, design patterns, scalable systems, and maintainable code structure for complex games. |
-| publishing-platforms | Game Dev | Platform submission processes, certification requirements, and distribution across Steam, Epic, console, and mobile plat... |
-| shader-techniques | Game Dev | Advanced shader programming, visual effects, custom materials, and rendering optimization for stunning game graphics. |
-| synchronization-algorithms | Game Dev | Network synchronization, lag compensation, client prediction, and state consistency for responsive multiplayer games. |
-| game-programming-languages | Languages | Game programming languages - C#, C++, GDScript. Learn syntax, patterns, and engine-specific idioms for professional game... |
-| golang-pro | Languages | Master Go 1.21+ with modern patterns, advanced concurrency, performance optimization, and production-ready microservices... |
-| python-best-practices | Languages | Modern Python 3.12+ development with strict type hints, ruff linting, uv package manager, async/await patterns, dataclas... |
-| rust-best-practices | Languages | Idiomatic Rust development with ownership, borrowing, lifetimes, error handling (thiserror/anyhow), async Tokio patterns... |
-| typescript | Languages | TypeScript code style and optimization guidelines. Use when writing TypeScript code (.ts, .tsx, .mts files), reviewing c... |
-| typescript-advanced | Languages | Advanced TypeScript patterns including branded/nominal types, discriminated unions with exhaustive matching, conditional... |
-| git-workflow | DevOps | Git workflow expertise covering conventional commits, branch strategies, rebase, merge conflict resolution, git hooks... |
-| go-linter-configuration | Linting | Configure and troubleshoot golangci-lint for Go projects. Handle import resolution issues, type-checking problems, and o... |
-| find-skills | Meta | Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is th... |
-| skill-creation-guide | Meta | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an exist... |
-| skill-creator | Meta | Create or update Claude skills. Use for new skills, skill references, skill scripts, optimizing existing skills, extendi... |
-| incident-response | Operations | Incident response procedures covering on-call runbooks, postmortem templates, rollback procedures, communication protocols... |
-| local-security | Security | Developer workstation security covering SSH key management, GPG signing, credential managers, multi-IDE security... |
-| project-migration | Migration | Migrate project folders while preserving Claude Code session data. Use when moving, renaming, or reorganizing project di... |
-| monitoring-observability | Monitoring | Production observability and monitoring expertise including structured logging with JSON and correlation IDs, Prometheus... |
-| npm-package | Packages | npm and pnpm package authoring expertise. Covers tsup and unbuild bundling, dual ESM/CJS exports, package.json fields (m... |
-| optimization-performance | Performance | Game optimization, performance profiling, multi-platform support, and frame rate optimization for smooth gameplay experi... |
-| performance-optimization | Performance | Web and backend performance optimization including Core Web Vitals (LCP, FID, INP, CLS), bundle analysis with webpack-bu... |
-| refactoring-patterns | Code Quality | Code refactoring patterns including extract method/class, inline, dead code elimination, dependency injection, SOLID... |
-| security-review | Security | Code security review covering OWASP Top 10, injection prevention (SQL, XSS, command injection), authentication and autho... |
-| testing-strategy | Testing | Comprehensive testing expertise across unit, integration, and e2e tests. Covers pytest, Vitest, Jest, Go testing, Playwr... |
-| remotion-best-practices | Video | Video creation in React using Remotion. Covers animations, compositions, audio sync, text effects, 3D integration with T... |
+| api-design | API | REST and GraphQL design. Resource naming, status codes, pagination, versioning, DataLoader |
+| api-testing | API | Contract testing (Pact), API mocking (MSW), load testing (k6), BAD/GOOD patterns |
+| code-reviewer | Code Quality | Code review with concrete examples. Severity definitions, inline comments, review output |
+| codebase-dissection | Code Quality | 4-phase systematic analysis. Architecture mapping, data flow, dead code, anti-patterns |
+| frontend-code-review | Code Quality | Frontend review checklist. cn() usage, memoization, accessibility, inline rules |
+| refactoring-patterns | Code Quality | Before/after diffs for extract method, replace conditional, dead code, DI patterns |
+| database-design | Database | Schema design, normalization, indexing, EXPLAIN ANALYZE, GORM for Go, migrations |
+| frontend-design | Design | Production interfaces. CSS custom properties, accessibility, DON'T/DO guidelines |
+| container-security | DevOps | Dockerfile BAD/GOOD, rootless containers, image scanning, runtime security config |
+| cost-optimization | DevOps | HPA config, spot instances, right-sizing, CDN caching, cost calculation examples |
+| ci-cd-automation | DevOps | Multi-language CI. Go, Node, Python pipelines, Docker build caching, artifacts |
+| ci-cd-pipelines | DevOps | GitHub Actions and GitLab CI. Matrix strategy, caching gotchas, deployment patterns |
+| docker-kubernetes | DevOps | Multi-stage builds (Go, Node, Python), K8s manifests, health checks, security context |
+| dependency-audit | DevOps | npm audit, go mod tidy, pip-audit, license compliance, CI automation |
+| doc-generation | Docs | OpenAPI, JSDoc, godoc, Mermaid diagrams, procedural walkthrough |
+| env-config | DevOps | .env management, Zod validation, dotenv-vault, AWS SSM, 12-factor patterns |
+| git-workflow | DevOps | Merge vs rebase decision tree, worktrees, SSH signing, sparse checkout |
+| update-docs | Docs | MDX workflow for Next.js docs, screenshot patterns, PR-based updates |
+| docx | Documents | Word document creation/editing. XML reference, tracked changes, page setup |
+| xlsx | Documents | Spreadsheet operations. Pivot tables, chart formulas, financial models |
+| fullstack-developer | Full-Stack | React, Node.js, databases, auth flow (JWT), API error handling patterns |
+| asset-optimization | Game Dev | Compression workflows, WebP/AVIF conversion, before/after optimization |
+| audio-systems | Game Dev | FMOD, Wwise, spatial audio, dynamic mixing, Unity/Godot integration code |
+| daw-music | Game Dev | MIDI processing, audio synthesis, interactive music, game audio code |
+| game-design-theory | Game Dev | MDA framework, balance formulas, XP curves, player psychology |
+| game-engines | Game Dev | Unity, Unreal, Godot 4.x. Architecture patterns, GDScript 2.0, C# code |
+| game-servers | Game Dev | Server architecture, matchmaking, WebSocket reconnection, cost analysis |
+| game-tools-workflows | Game Dev | Git LFS, build automation, asset pipelines, bandwidth gotchas |
+| gameplay-mechanics | Game Dev | Input buffering, feedback loops, balance spreadsheets, production code |
+| graphics-rendering | Game Dev | PBR shaders, WebGPU, VFX recipes, optimization matrix |
+| level-design | Game Dev | Whitebox workflow, pacing graphs, procedural generation seeds |
+| memory-management | Game Dev | Object pooling, GC optimization, Rust ownership comparison, budgets |
+| monetization-systems | Game Dev | IAP manager, battle pass design, A/B test revenue formulas, KPIs |
+| networking-servers | Game Dev | Lag compensation, netcode, synchronization, anti-cheat patterns |
+| optimization-performance | Game Dev | Profiling, multi-platform, frame rate optimization, LCP srcset |
+| particle-systems | Game Dev | VFX, physics simulation, LOD strategy, post-processing |
+| programming-architecture | Game Dev | ECS, data-oriented design, clean architecture, concrete implementations |
+| publishing-platforms | Game Dev | Steam, Epic, console submission. Revenue splits, certification checklists |
+| shader-techniques | Game Dev | HLSL/GLSL, mobile GPU gotchas, custom materials, optimization |
+| synchronization-algorithms | Game Dev | Rollback netcode, client prediction, server reconciliation code |
+| game-programming-languages | Languages | C# 12, C++ 23, GDScript 2.0. Syntax, patterns, engine idioms |
+| golang-pro | Languages | Go 1.23+. Error handling, HTTP routing, concurrency, testing, profiling |
+| python-best-practices | Languages | Python 3.12+. Type hints, ruff, uv, async, dataclasses, pyright config |
+| rust-best-practices | Languages | Ownership, lifetimes, error handling, async Tokio, lifetime diagrams |
+| typescript | Languages | Strict types, generics constraints, utility types, discriminated unions |
+| typescript-advanced | Languages | Branded types, conditional types, satisfies operator, type-level programming |
+| go-linter-configuration | Linting | golangci-lint setup, .golangci.yml, import resolution, troubleshooting |
+| find-skills | Meta | Skill discovery. Searches installed and available skills by keyword |
+| skill-creation-guide | Meta | How to create effective skills. Validation, edge cases, progressive disclosure |
+| skill-creator | Meta | Create or update skills. References layout, frontmatter rules |
+| incident-response | Ops | Severity levels, runbooks, PagerDuty/OpsGenie webhooks, blameless postmortems |
+| local-security | Security | SSH, GPG, credential managers, Windows OpenSSH agent, file permissions |
+| security-review | Security | OWASP Top 10, injection prevention, secrets rotation, csrf-csrf patterns |
+| monitoring-observability | Monitoring | JSON logging, Prometheus, OpenTelemetry, Grafana dashboard JSON, SLO alerts |
+| project-migration | Migration | Project folder migration preserving Claude Code session data and paths |
+| npm-package | Packages | tsup bundling, ESM/CJS exports, wrong-exports debugging, monorepo setup |
+| performance-optimization | Performance | Core Web Vitals, bundle analysis, caching, memory leak detection |
+| testing-strategy | Testing | Test pyramid, pytest/Vitest/Jest/Go, flakiness detection, TDD workflow |
+| remotion-best-practices | Video | React video creation. Composition, spring(), interpolate, Sequence, Audio |
 
-## CLI
+## How It Compares
 
-Arcana is also a universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.
-
-```bash
-# Skills
-npx arcana install golang-pro        # Install a skill
-npx arcana install --all             # Install all skills
-npx arcana list                      # List available skills
-npx arcana search "code review"      # Search across providers
-npx arcana info codebase-dissection  # Show skill details
-npx arcana create my-skill           # Create a new skill
-npx arcana validate --all --fix      # Validate and fix all skills
-npx arcana update --all              # Update all installed skills
-npx arcana uninstall old-skill       # Remove a skill
-
-# Environment
-npx arcana init                      # Scaffold AI tool config (CLAUDE.md, .cursor/rules/, etc.)
-npx arcana doctor                    # Diagnose environment issues
-npx arcana clean --dry-run           # Preview cleanup of stale data
-npx arcana stats                     # Session analytics and token usage
-npx arcana config list               # View configuration
-
-# Providers
-npx arcana providers --add someone/their-skills
-npx arcana list --provider someone/their-skills
-```
-
-Skills are installed to `~/.agents/skills/`, the standard location for all compatible tools.
-
-## Quick Start
-
-**Option 1: CLI (recommended)**
-```bash
-npx @mahdy-gribkov/arcana install --all
-```
-
-**Option 2: Claude Code**
-```bash
-/install mahdy-gribkov/arcana
-```
-
-**Option 3: Manual**
-```bash
-git clone https://github.com/mahdy-gribkov/arcana.git
-cp -r arcana/skills/* ~/.agents/skills/
-```
+| Feature | Arcana | Skills.sh | Manual |
+|---------|--------|-----------|--------|
+| Skill install | Yes | Yes | Copy files |
+| Validation scripts | Yes (zero token cost) | No | No |
+| Environment doctor | Yes | No | No |
+| Multi-platform init | 7 platforms | 17+ agents | Manual |
+| Skill validation | `validate --all --fix` | No | No |
+| Security scanning | Built-in | No | No |
+| Skill count | 59 curated | Community | DIY |
 
 ## Compatibility
 
-These skills follow the open Agent Skills standard, established December 2025.
+All skills follow the open [Agent Skills standard](https://docs.anthropic.com/en/docs/agents/skills) (Anthropic, Oct 2025).
 
-| Platform | Status |
-|----------|--------|
-| Claude Code (Anthropic) | Fully supported |
-| Codex CLI (OpenAI) | Supported (AGENTS.md) |
-| Cursor AI | Supported (.cursor/rules/) |
-| Gemini CLI (Google) | Supported (GEMINI.md) |
-| Windsurf (Codeium) | Supported (.windsurfrules) |
-| Antigravity (Google) | Supported (GEMINI.md) |
-| Aider | Supported (.aider.conf.yml) |
+| Platform | Config File | Status |
+|----------|------------|--------|
+| Claude Code | `CLAUDE.md` | Fully supported |
+| Codex CLI | `AGENTS.md` | Supported |
+| Cursor AI | `.cursor/rules/` | Supported |
+| Gemini CLI | `GEMINI.md` | Supported |
+| Windsurf | `.windsurfrules` | Supported |
+| Antigravity | `GEMINI.md` | Supported |
+| Aider | `.aider.conf.yml` | Supported |
 
 ## Support This Project
 
-I build and maintain these skills in my free time. If they save you time or teach you something useful, consider supporting the project.
+I build and maintain these skills in my free time. If they save you time, consider supporting the project.
 
 - [GitHub Sponsors](https://github.com/sponsors/mahdy-gribkov)
 - [Buy Me a Coffee](https://buymeacoffee.com/mahdygribkov)
 - [Ko-fi](https://ko-fi.com/mahdygribkov)
 
-Starring the repo also helps. It costs nothing and makes the project more visible.
+Starring the repo also helps.
 
 ## Contributing
 
-Want to add a skill or improve an existing one? Check [CONTRIBUTING.md](CONTRIBUTING.md) for the process and quality checklist.
+Want to add a skill or improve an existing one? Check [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 
-Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it.
+Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
 ## Credits
 
-Created by [Mahdy Gribkov](https://mahdygribkov.vercel.app). Software engineer building tools for developers.
-
-- [Portfolio](https://mahdygribkov.vercel.app)
-- [GitHub](https://github.com/mahdy-gribkov)
-- [LinkedIn](https://linkedin.com/in/mahdy-gribkov)
+Created by [Mahdy Gribkov](https://mahdygribkov.vercel.app).
 
 ## License
 
