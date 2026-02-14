@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@mahdy-gribkov/arcana"><img src="https://img.shields.io/npm/v/@mahdy-gribkov/arcana?style=for-the-badge&color=d4943a" alt="npm"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4943a?style=for-the-badge" alt="MIT"/></a>
-  <a href="#skills"><img src="https://img.shields.io/badge/Skills-59-d4943a?style=for-the-badge" alt="Skills"/></a>
+  <a href="#skills"><img src="https://img.shields.io/badge/Skills-60-d4943a?style=for-the-badge" alt="Skills"/></a>
   <a href="#compatibility"><img src="https://img.shields.io/badge/Platforms-7-d4943a?style=for-the-badge" alt="Platforms"/></a>
 </p>
 
@@ -18,7 +18,7 @@
 
 ## What Makes Arcana Different
 
-**59 battle-tested skills** with code examples, BAD/GOOD pairs, and procedural workflows in every section. Not capability lists. Not vague instructions. Real patterns you can copy.
+**60 battle-tested skills** with code examples, BAD/GOOD pairs, and procedural workflows in every section. Not capability lists. Not vague instructions. Real patterns you can copy.
 
 **Validation scripts** that run as zero-cost automation. Security review checks generated auth code. Database design lints migration files. TypeScript scans for `any` usage. All executed, never loaded as context.
 
@@ -142,6 +142,7 @@ All commands support `--json` for machine-readable output and respect `NO_COLOR`
 | project-migration | Migration | Project folder migration preserving Claude Code session data and paths |
 | npm-package | Packages | tsup bundling, ESM/CJS exports, wrong-exports debugging, monorepo setup |
 | performance-optimization | Performance | Core Web Vitals, bundle analysis, caching, memory leak detection |
+| pre-production-review | Review | 8-domain codebase analysis with health scoring and phased remediation |
 | testing-strategy | Testing | Test pyramid, pytest/Vitest/Jest/Go, flakiness detection, TDD workflow |
 | remotion-best-practices | Video | React video creation. Composition, spring(), interpolate, Sequence, Audio |
 

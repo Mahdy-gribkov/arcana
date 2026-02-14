@@ -1,6 +1,44 @@
 # Changelog
 
-## 2.1.0 (2026-02-14)
+## 2.1.0.0 (2026-02-14)
+
+Pre-production review skill, CLI hardening, security audit, 60 skills at PERFECT quality.
+
+### New Skill
+- `pre-production-review`: 8-domain codebase analysis (security, data, backend, external, frontend, infra, performance, quality). Includes 5 analysis scripts and 3 reference docs. Inspired by [UCOF](https://github.com/nativardi/ucof) by @nativardi.
+
+### CLI Improvements
+- `--json` flag added to info, config, install, update, uninstall commands (was only on list, search, validate, doctor, stats, audit)
+- `arcana create` now scaffolds scripts/ and references/ directories with .gitkeep
+- `arcana init` now suggests relevant skills based on detected project type
+- `arcana audit` command for automated skill quality scoring (8 checks, 100-point scale)
+- Pre-commit hook: `scripts/hooks/pre-commit` runs security scan automatically
+
+### Security Hardening
+- Shell scripts: input validation rejects paths with shell metacharacters ($, `, ;, |, &)
+- Shell scripts: symlink protection (! -type l) on all find commands
+- Shell scripts: binary file protection (grep -I) on all scanning
+- Shell scripts: improved JSON escaping, stdin size limits
+- CLI: stronger path traversal protection (reject .., case-insensitive on Windows)
+- CLI: SSRF protection with redirect hostname allowlist
+- CLI: symlink-safe getDirSize (lstatSync instead of statSync)
+- CLI: increased temp file entropy (16 bytes + PID)
+
+### Quality
+- All 60 skills rewritten to PERFECT quality (code in every section, BAD/GOOD pairs)
+- 4 validation scripts added (security-review, database-design, typescript-advanced, golang-pro)
+- Test count: 45 -> 66 (new: audit.test.ts, fs.test.ts)
+- README rewritten with SVG branding, comparison table, full skill catalog
+- Remotion promo video project (30s, 5 scenes, 1920x1080)
+
+### Changed
+- Total skills: 59 -> 60
+- Total CLI tests: 45 -> 66
+- security-scan.sh: added scan-secrets.sh to exclusion list
+
+---
+
+## 2.1.0-rc (2026-02-14)
 
 Quality infrastructure, 10 new skills, JSON output, security automation.
 
