@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.1.0 (2026-02-14)
+
+Quality infrastructure, 10 new skills, JSON output, security automation.
+
+### Testing
+- Added vitest with 35 unit tests across 5 test suites (frontmatter, UI, HTTP, config, atomic writes)
+- Tests run in CI pipeline (typecheck -> unit-tests -> smoke)
+
+### CI/CD
+- Unit test job added to test-cli.yml workflow
+- Dependabot for npm and GitHub Actions dependencies (weekly)
+- Security scanning workflow: npm audit + secret/path leak detection
+- Feature request issue template
+
+### New Features
+- `--json` flag on list, search, validate, doctor commands
+- `NO_COLOR` environment variable support (chalk.level = 0)
+- Validation improvements: warn on quoted descriptions, info on missing ## headings
+
+### New Skills (10)
+- api-testing, container-security, cost-optimization, dependency-audit, doc-generation
+- env-config, git-workflow, incident-response, local-security, refactoring-patterns
+
+### Security
+- `scripts/security-scan.sh`: scans for hardcoded paths, secrets, personal data, .env files
+- CI workflow runs security scan on push and weekly
+
+### Changed
+- Total skills: 50 -> 60
+- Total CLI tests: 0 -> 35
+
 ## 2.0.4 (2026-02-14)
 
 Complete audit: 50+ fixes across CLI, repo, CI/CD, and documentation.

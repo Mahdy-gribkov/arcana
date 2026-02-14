@@ -37,12 +37,12 @@ python scripts/test_migrate.py -v
 
 1. **Dry run first** — always preview what will happen:
    ```bash
-   python scripts/migrate.py "C:\Users\User\Desktop\my-project" "C:\Users\User\Coding\Personal\my-project" --dry-run
+   python scripts/migrate.py "C:\Users\Dev\Desktop\my-project" "C:\Users\Dev\Coding\my-project" --dry-run
    ```
 
 2. **Execute migration** — moves files + Claude data:
    ```bash
-   python scripts/migrate.py "C:\Users\User\Desktop\my-project" "C:\Users\User\Coding\Personal\my-project"
+   python scripts/migrate.py "C:\Users\Dev\Desktop\my-project" "C:\Users\Dev\Coding\my-project"
    ```
 
 3. **With bulky cleanup** — removes node_modules, .next, __pycache__ before moving:
@@ -75,7 +75,7 @@ Reports: key name, decoded path, directory size, session count.
 ## Path Encoding Reference
 
 Claude Code encodes project paths as directory names:
-- `C:\Users\User\Desktop\foo` → `c--Users-User-Desktop-foo`
+- `C:\Users\Dev\Desktop\foo` → `c--Users-User-Desktop-foo`
 - Colon → dash, backslash → dash, space → dash, underscore → dash
 - Drive letter lowercased
 

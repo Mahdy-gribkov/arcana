@@ -3,7 +3,7 @@
 Agent skills that work across AI coding tools. Drop them into your tools directory and they just work. No configuration. No dependencies. Plain markdown and Python scripts.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-49-blue.svg)](#skills)
+[![Skills](https://img.shields.io/badge/Skills-60-blue.svg)](#skills)
 [![Platforms](https://img.shields.io/badge/Platforms-7-green.svg)](#compatibility)
 
 ## What Is This
@@ -15,14 +15,20 @@ A collection of agent skills that follow the open [Agent Skills standard](https:
 | Skill | Category | Description |
 |-------|----------|-------------|
 | api-design | API | REST API and GraphQL design best practices including resource naming, HTTP methods, status codes, pagination (cursor vs ... |
+| api-testing | API | API testing expertise covering contract testing with Pact, API mocking with MSW and Prism, load testing with k6 and Locust... |
 | code-reviewer | Code Quality | Use this skill to review code. It supports both local changes (staged or working tree) |
 | codebase-dissection | Code Quality | Systematic methodology for analyzing, understanding, and diagnosing problems in any codebase. Covers architecture mappin... |
 | frontend-code-review | Code Quality | "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change rev... |
 | database-design | Database | Database architecture and query optimization for PostgreSQL and SQLite. Covers schema design, normalization to 3NF, deno... |
 | frontend-design | Design | Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to ... |
+| container-security | DevOps | Container security including image scanning with Trivy and Grype, minimal base images, rootless containers, supply chain... |
+| cost-optimization | DevOps | Cloud and infrastructure cost optimization covering container right-sizing, CDN caching, database query cost analysis... |
 | ci-cd-automation | DevOps | Continuous integration and deployment pipelines, automated testing, build automation, and team workflows for game develo... |
 | ci-cd-pipelines | DevOps | GitHub Actions and GitLab CI/CD pipeline expertise. Workflow syntax, job matrix, dependency caching (npm, pip, go, docke... |
 | docker-kubernetes | DevOps | Production Docker and Kubernetes patterns including multi-stage builds, minimal base images, non-root users, layer cachi... |
+| dependency-audit | DevOps | Dependency auditing covering npm audit, go mod tidy, pip-audit, license compliance, lockfile hygiene, Dependabot config... |
+| doc-generation | Documentation | Documentation generation from code including OpenAPI, GraphQL schema docs, Mermaid diagrams, changelog automation... |
+| env-config | DevOps | Environment configuration patterns covering .env management, validation with Zod/envalid, 12-factor config, Docker env... |
 | update-docs | Documentation | This skill should be used when the user asks to "update documentation for my changes", "check docs for this PR", "what d... |
 | docx | Documents | "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers incl... |
 | xlsx | Documents | "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to:... |
@@ -51,15 +57,19 @@ A collection of agent skills that follow the open [Agent Skills standard](https:
 | rust-best-practices | Languages | Idiomatic Rust development with ownership, borrowing, lifetimes, error handling (thiserror/anyhow), async Tokio patterns... |
 | typescript | Languages | TypeScript code style and optimization guidelines. Use when writing TypeScript code (.ts, .tsx, .mts files), reviewing c... |
 | typescript-advanced | Languages | Advanced TypeScript patterns including branded/nominal types, discriminated unions with exhaustive matching, conditional... |
+| git-workflow | DevOps | Git workflow expertise covering conventional commits, branch strategies, rebase, merge conflict resolution, git hooks... |
 | go-linter-configuration | Linting | Configure and troubleshoot golangci-lint for Go projects. Handle import resolution issues, type-checking problems, and o... |
 | find-skills | Meta | Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is th... |
 | skill-creation-guide | Meta | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an exist... |
 | skill-creator | Meta | Create or update Claude skills. Use for new skills, skill references, skill scripts, optimizing existing skills, extendi... |
+| incident-response | Operations | Incident response procedures covering on-call runbooks, postmortem templates, rollback procedures, communication protocols... |
+| local-security | Security | Developer workstation security covering SSH key management, GPG signing, credential managers, multi-IDE security... |
 | project-migration | Migration | Migrate project folders while preserving Claude Code session data. Use when moving, renaming, or reorganizing project di... |
 | monitoring-observability | Monitoring | Production observability and monitoring expertise including structured logging with JSON and correlation IDs, Prometheus... |
 | npm-package | Packages | npm and pnpm package authoring expertise. Covers tsup and unbuild bundling, dual ESM/CJS exports, package.json fields (m... |
 | optimization-performance | Performance | Game optimization, performance profiling, multi-platform support, and frame rate optimization for smooth gameplay experi... |
 | performance-optimization | Performance | Web and backend performance optimization including Core Web Vitals (LCP, FID, INP, CLS), bundle analysis with webpack-bu... |
+| refactoring-patterns | Code Quality | Code refactoring patterns including extract method/class, inline, dead code elimination, dependency injection, SOLID... |
 | security-review | Security | Code security review covering OWASP Top 10, injection prevention (SQL, XSS, command injection), authentication and autho... |
 | testing-strategy | Testing | Comprehensive testing expertise across unit, integration, and e2e tests. Covers pytest, Vitest, Jest, Go testing, Playwr... |
 | remotion-best-practices | Video | Video creation in React using Remotion. Covers animations, compositions, audio sync, text effects, 3D integration with T... |
