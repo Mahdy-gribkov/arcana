@@ -7,6 +7,12 @@ set -euo pipefail
 
 TARGET="${1:-.}"
 
+# Input validation: reject paths with shell metacharacters
+if [[ "$TARGET" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 red() { printf '\033[0;31m%s\033[0m\n' "$1"; }
 green() { printf '\033[0;32m%s\033[0m\n' "$1"; }
 dim() { printf '\033[0;90m%s\033[0m\n' "$1"; }
@@ -15,7 +21,7 @@ echo "Go error handling scan: $TARGET"
 FOUND=0
 
 # 1. Ignored error returns (assigned to _)
-hits=$(grep -rn ', *_ *:*= *' "$TARGET" --include="*.go" \
+hits=$(grep -rn -I ', *_ *:*= *' "$TARGET" --include="*.go" \
   | grep -Ev '(vendor/|_test\.go|testdata/)' \
   | grep -i 'err\|error' || true)
 if [ -n "$hits" ]; then
@@ -26,7 +32,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 2. Bare error returns without wrapping
-hits=$(grep -rn 'return.*err$' "$TARGET" --include="*.go" \
+hits=$(grep -rn -I 'return.*err$' "$TARGET" --include="*.go" \
   | grep -Ev '(vendor/|_test\.go|fmt\.Errorf|errors\.Wrap|errors\.New)' || true)
 if [ -n "$hits" ]; then
   count=$(echo "$hits" | wc -l)
@@ -35,7 +41,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 3. panic() usage outside tests
-hits=$(grep -rn 'panic(' "$TARGET" --include="*.go" \
+hits=$(grep -rn -I 'panic(' "$TARGET" --include="*.go" \
   | grep -Ev '(vendor/|_test\.go|testdata/|recover)' || true)
 if [ -n "$hits" ]; then
   count=$(echo "$hits" | wc -l)
@@ -45,7 +51,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 4. fmt.Println in non-test code (should use slog/zerolog)
-hits=$(grep -rn 'fmt\.Print\|log\.Print\|log\.Fatal' "$TARGET" --include="*.go" \
+hits=$(grep -rn -I 'fmt\.Print\|log\.Print\|log\.Fatal' "$TARGET" --include="*.go" \
   | grep -Ev '(vendor/|_test\.go|testdata/|main\.go)' || true)
 if [ -n "$hits" ]; then
   count=$(echo "$hits" | wc -l)

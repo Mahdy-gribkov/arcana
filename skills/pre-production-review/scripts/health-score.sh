@@ -3,9 +3,15 @@ set -euo pipefail
 
 INPUT="${1:-}"
 
+# Input validation: reject paths with shell metacharacters
+if [[ -n "$INPUT" ]] && [[ "$INPUT" != "-" ]] && [[ "$INPUT" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 # Read JSON from file or stdin
 if [[ -z "$INPUT" ]] || [[ "$INPUT" == "-" ]]; then
-  JSON_DATA=$(cat)
+  JSON_DATA=$(head -c 1048576)  # Max 1MB
 elif [[ -f "$INPUT" ]]; then
   JSON_DATA=$(cat "$INPUT")
 else

@@ -6,6 +6,13 @@
 set -euo pipefail
 
 TARGET="${1:-.}"
+
+# Input validation: reject paths with shell metacharacters
+if [[ "$TARGET" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 FOUND=0
 
 red() { printf '\033[0;31m%s\033[0m\n' "$1"; }
@@ -15,7 +22,7 @@ dim() { printf '\033[0;90m%s\033[0m\n' "$1"; }
 echo "Migration safety scan: $TARGET"
 
 # 1. DROP TABLE without backup
-hits=$(grep -rni 'DROP TABLE' "$TARGET" --include="*.sql" \
+hits=$(grep -rni -I 'DROP TABLE' "$TARGET" --include="*.sql" \
   | grep -Ev '(IF EXISTS|backup|archive|_old|_bak)' || true)
 if [ -n "$hits" ]; then
   red "DANGER: DROP TABLE without safety check:"
@@ -24,7 +31,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 2. NOT NULL without DEFAULT on existing table
-hits=$(grep -rni 'ADD.*COLUMN.*NOT NULL' "$TARGET" --include="*.sql" \
+hits=$(grep -rni -I 'ADD.*COLUMN.*NOT NULL' "$TARGET" --include="*.sql" \
   | grep -Evi 'DEFAULT' || true)
 if [ -n "$hits" ]; then
   red "DANGER: NOT NULL column without DEFAULT (will fail on existing rows):"
@@ -33,7 +40,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 3. RENAME COLUMN (can break application code)
-hits=$(grep -rni 'RENAME COLUMN\|RENAME TO' "$TARGET" --include="*.sql" || true)
+hits=$(grep -rni -I 'RENAME COLUMN\|RENAME TO' "$TARGET" --include="*.sql" || true)
 if [ -n "$hits" ]; then
   red "WARN: Column/table rename (may break application code):"
   echo "$hits" | while IFS= read -r line; do dim "  $line"; done
@@ -41,7 +48,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 4. ALTER TYPE without migration strategy
-hits=$(grep -rni 'ALTER.*TYPE\|SET DATA TYPE' "$TARGET" --include="*.sql" || true)
+hits=$(grep -rni -I 'ALTER.*TYPE\|SET DATA TYPE' "$TARGET" --include="*.sql" || true)
 if [ -n "$hits" ]; then
   red "WARN: Type change detected (may require data migration):"
   echo "$hits" | while IFS= read -r line; do dim "  $line"; done
@@ -49,7 +56,7 @@ if [ -n "$hits" ]; then
 fi
 
 # 5. Missing down migration
-for f in $(find "$TARGET" -name "*up*.sql" -o -name "*migrate*.sql" 2>/dev/null); do
+for f in $(find "$TARGET" -type f ! -type l -name "*up*.sql" -o -name "*migrate*.sql" 2>/dev/null); do
   dir=$(dirname "$f")
   base=$(basename "$f")
   down=$(echo "$base" | sed 's/up/down/g')

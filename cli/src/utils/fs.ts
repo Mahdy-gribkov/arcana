@@ -22,7 +22,8 @@ export function getDirSize(dir: string): number {
       for (const entry of readdirSync(current)) {
         const full = join(current, entry);
         try {
-          const stat = statSync(full);
+          const stat = lstatSync(full);
+          if (stat.isSymbolicLink()) continue;
           if (stat.isDirectory()) queue.push(full);
           else size += stat.size;
         } catch { /* skip unreadable entries */ }
@@ -46,8 +47,15 @@ export function installSkill(skillName: string, files: SkillFile[]): string {
 
   try {
     for (const file of files) {
+      // Reject paths containing .. before resolving
+      if (file.path.includes("..") || file.path.includes("~")) {
+        throw new Error(`Path traversal blocked: ${file.path}`);
+      }
       const filePath = resolve(tempDir, file.path);
-      if (!filePath.startsWith(tempDir + sep) && filePath !== tempDir) {
+      // Normalize to lowercase on Windows for case-insensitive comparison
+      const normalizedFile = process.platform === "win32" ? filePath.toLowerCase() : filePath;
+      const normalizedTemp = process.platform === "win32" ? (tempDir + sep).toLowerCase() : tempDir + sep;
+      if (!normalizedFile.startsWith(normalizedTemp) && normalizedFile !== (process.platform === "win32" ? tempDir.toLowerCase() : tempDir)) {
         throw new Error(`Path traversal blocked: ${file.path}`);
       }
       const dir = dirname(filePath);

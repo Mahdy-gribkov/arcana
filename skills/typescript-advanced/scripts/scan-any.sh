@@ -7,6 +7,12 @@ set -euo pipefail
 
 TARGET="${1:-.}"
 
+# Input validation: reject paths with shell metacharacters
+if [[ "$TARGET" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 red() { printf '\033[0;31m%s\033[0m\n' "$1"; }
 green() { printf '\033[0;32m%s\033[0m\n' "$1"; }
 dim() { printf '\033[0;90m%s\033[0m\n' "$1"; }
@@ -14,13 +20,13 @@ dim() { printf '\033[0;90m%s\033[0m\n' "$1"; }
 echo "TypeScript 'any' usage scan: $TARGET"
 
 # Count explicit `any` type annotations
-any_count=$(grep -rn ': any\b\|: any;\|: any,\|: any)\|<any>' "$TARGET" \
+any_count=$(grep -rn -I ': any\b\|: any;\|: any,\|: any)\|<any>' "$TARGET" \
   --include="*.ts" --include="*.tsx" \
   | grep -Ev '(node_modules|dist|\.test\.|\.spec\.|\.d\.ts)' \
   | wc -l)
 
 # Count `as any` casts
-as_any_count=$(grep -rn 'as any' "$TARGET" \
+as_any_count=$(grep -rn -I 'as any' "$TARGET" \
   --include="*.ts" --include="*.tsx" \
   | grep -Ev '(node_modules|dist|\.test\.|\.spec\.|\.d\.ts)' \
   | wc -l)
@@ -35,7 +41,7 @@ echo "---"
 
 if [ "$total" -gt 0 ]; then
   red "Locations:"
-  grep -rn ': any\b\|as any' "$TARGET" \
+  grep -rn -I ': any\b\|as any' "$TARGET" \
     --include="*.ts" --include="*.tsx" \
     | grep -Ev '(node_modules|dist|\.test\.|\.spec\.|\.d\.ts)' \
     | head -20 \

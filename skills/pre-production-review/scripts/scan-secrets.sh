@@ -3,6 +3,12 @@ set -euo pipefail
 
 TARGET_DIR="${1:-.}"
 
+# Input validation: reject paths with shell metacharacters
+if [[ "$TARGET_DIR" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 if [[ ! -d "$TARGET_DIR" ]]; then
   echo "{\"error\": \"Directory not found: $TARGET_DIR\"}" >&2
   exit 1
@@ -30,7 +36,7 @@ declare -A PATTERNS=(
 # Function to escape JSON string
 json_escape() {
   printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' 2>/dev/null || \
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/g' | tr -d '\n'
+  printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr -d '\n\r')"
 }
 
 # Search for each pattern
@@ -53,7 +59,7 @@ for pattern_name in "${!PATTERNS[@]}"; do
       # Create JSON finding
       FINDINGS+=("{\"file\":\"$file\",\"line\":$line_num,\"pattern\":\"$pattern_name\",\"snippet\":$(json_escape "${content:0:100}")}")
     fi
-  done < <(grep -rn -E "$pattern" "$TARGET_DIR" 2>/dev/null || true)
+  done < <(grep -rn -I -E "$pattern" "$TARGET_DIR" 2>/dev/null || true)
 done
 
 # Output JSON array

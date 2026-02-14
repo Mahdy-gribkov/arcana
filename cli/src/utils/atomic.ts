@@ -6,7 +6,7 @@ export function atomicWriteSync(filePath: string, content: string, mode = 0o644)
   const dir = dirname(filePath);
   mkdirSync(dir, { recursive: true });
 
-  const tmpPath = join(dir, `.${randomBytes(4).toString("hex")}.tmp`);
+  const tmpPath = join(dir, `.${process.pid}.${randomBytes(16).toString("hex")}.tmp`);
   try {
     writeFileSync(tmpPath, content, { encoding: "utf-8", mode });
     renameSync(tmpPath, filePath);

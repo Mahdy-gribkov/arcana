@@ -3,6 +3,12 @@ set -euo pipefail
 
 TARGET_DIR="${1:-.}"
 
+# Input validation: reject paths with shell metacharacters
+if [[ "$TARGET_DIR" =~ [\$\`\;\|\&\(] ]]; then
+  echo '{"error": "Invalid path: contains shell metacharacters"}' >&2
+  exit 1
+fi
+
 if [[ ! -d "$TARGET_DIR" ]]; then
   echo "{\"error\": \"Directory not found: $TARGET_DIR\"}" >&2
   exit 1
@@ -17,7 +23,7 @@ FILE_COUNT=0
 CRITICAL_FILES=()
 
 # Count files (excluding node_modules, .git, dist, build)
-FILE_COUNT=$(find "$TARGET_DIR" -type f \
+FILE_COUNT=$(find "$TARGET_DIR" -type f ! -type l \
   ! -path "*/node_modules/*" \
   ! -path "*/.git/*" \
   ! -path "*/dist/*" \

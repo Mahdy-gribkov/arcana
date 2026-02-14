@@ -132,6 +132,18 @@ function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpRes
           reject(new Error(`Redirect to non-HTTPS URL blocked: ${sanitizeUrl(location)}`));
           return;
         }
+        // After the existing https check, add:
+        try {
+          const redirectUrl = new URL(location);
+          const allowedHosts = ["github.com", "raw.githubusercontent.com", "api.github.com", "objects.githubusercontent.com", "registry.npmjs.org"];
+          if (!allowedHosts.some(h => redirectUrl.hostname === h || redirectUrl.hostname.endsWith("." + h))) {
+            reject(new Error(`Redirect to untrusted host blocked: ${redirectUrl.hostname}`));
+            return;
+          }
+        } catch {
+          reject(new Error(`Invalid redirect URL: ${sanitizeUrl(location)}`));
+          return;
+        }
         doGet(location, timeout, redirectCount + 1).then(resolve, reject);
         return;
       }
