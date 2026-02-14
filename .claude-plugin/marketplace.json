@@ -257,6 +257,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "pre-production-review",
+      "source": "./skills/pre-production-review",
+      "description": "Systematic pre-production codebase review across 8 domains: security, data layer, backend/API, external services, frontend, infrastructure, performance, and code quality. Dispatches parallel sub-agents for deep analysis, synthesizes findings into a scored health report with phased remediation plan.",
+      "version": "1.0.0"
+    },
+    {
       "name": "performance-optimization",
       "source": "./skills/performance-optimization",
       "description": "Web and backend performance optimization including Core Web Vitals (LCP, FID, INP, CLS), bundle analysis with webpack-bundle-analyzer, code splitting, lazy loading, image optimization (WebP, AVIF, responsive srcset), caching strategies (HTTP Cache-Control, CDN, Redis, application-level), database query optimization (indexing, EXPLAIN ANALYZE, N+1), memory leak detection with Chrome DevTools and Node --inspect, connection pooling, and async processing patterns. Use when diagnosing slow pages, reducing bundle size, optimizing API response times, or fixing memory leaks.",
