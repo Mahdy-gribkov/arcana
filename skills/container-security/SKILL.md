@@ -1,86 +1,449 @@
 ---
 name: container-security
-description: Container security practices covering image scanning, minimal base images, rootless execution, secrets management, supply chain verification, and runtime policy enforcement.
+description: Container security from build to runtime. Image scanning, minimal base images, rootless execution, secrets management, supply chain verification, and runtime policies with concrete Dockerfile examples.
 ---
-
-## Purpose
-
-Secure container workloads from build to runtime. This skill covers image hardening, vulnerability scanning, secret injection, supply chain integrity, and runtime defense.
 
 ## Image Scanning
 
-- Run `trivy image <image>:<tag>` before every push to a registry. Fail CI on HIGH or CRITICAL findings.
-- Use `grype <image>` as a second opinion scanner. Different scanners catch different CVEs.
-- Scan both the final image and intermediate build stages. Multi-stage builds can leak vulnerabilities into earlier layers.
-- Pin scanner versions in CI to avoid surprise behavior changes.
-- Store scan results as build artifacts. Compare across releases to track vulnerability trends.
-- Integrate scanning into pull request checks. Block merges that introduce new HIGH+ vulnerabilities.
+Run Trivy before every push. Fail CI on HIGH or CRITICAL vulnerabilities.
+
+```bash
+trivy image myapp:latest --severity HIGH,CRITICAL --exit-code 1
+```
+
+Use Grype as a second scanner. Different scanners catch different CVEs.
+
+```bash
+grype myapp:latest --fail-on high
+```
+
+Store scan results as build artifacts for trending.
+
+```bash
+trivy image myapp:latest --format json --output scan-results.json
+```
 
 ## Minimal Base Images
 
-- Default to `distroless` images for production. They contain only the application and its runtime dependencies.
-- Use `scratch` for statically compiled binaries (Go, Rust). Zero OS surface means zero OS-level CVEs.
-- Alpine is a reasonable middle ground when you need a shell for debugging. Pin the version explicitly.
-- Never use `latest` tags for base images. Pin to a digest or specific version.
-- Audit base image contents with `docker image inspect` and `dive` to find unnecessary packages.
-- Remove package managers in the final stage. If `apt-get` exists in production, attackers can install tools.
+**BAD:** Using full OS images with unnecessary packages.
 
-## Multi-Stage Builds
+```dockerfile
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y curl ca-certificates
+COPY app /app
+CMD ["/app"]
+```
 
-- Separate build dependencies from runtime dependencies using multi-stage Dockerfiles.
-- Copy only the compiled artifact into the final stage. Do not copy source code, test files, or build tools.
-- Use `COPY --from=builder` to pull specific files rather than entire directories.
-- Label each stage clearly: `FROM golang:1.23 AS builder`, `FROM gcr.io/distroless/static AS runtime`.
-- Run tests in a dedicated stage. Test failures stop the build before the runtime image is created.
+**GOOD:** Use distroless for runtime. Zero shell, zero package manager.
+
+```dockerfile
+FROM golang:1.23 AS builder
+WORKDIR /build
+COPY . .
+RUN CGO_ENABLED=0 go build -o app
+
+FROM gcr.io/distroless/static-debian12
+COPY --from=builder /build/app /app
+CMD ["/app"]
+```
+
+**For Node.js apps:**
+
+```dockerfile
+FROM node:20-alpine AS builder
+WORKDIR /build
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+
+FROM gcr.io/distroless/nodejs20-debian12
+COPY --from=builder /build /app
+WORKDIR /app
+CMD ["server.js"]
+```
+
+**For statically compiled binaries (Go, Rust):**
+
+```dockerfile
+FROM golang:1.23 AS builder
+WORKDIR /build
+COPY . .
+RUN CGO_ENABLED=0 go build -o app
+
+FROM scratch
+COPY --from=builder /build/app /app
+CMD ["/app"]
+```
 
 ## Rootless Containers
 
-- Add `USER nonroot` or `USER 65534` in the Dockerfile. Never run production containers as root.
-- Set filesystem permissions during the build so the non-root user can read application files.
-- Use `--read-only` flag at runtime to prevent filesystem writes outside mounted volumes.
-- Drop all Linux capabilities with `--cap-drop=ALL`, then add back only what the application needs.
-- Test locally with `podman` in rootless mode to catch permission issues early.
+**BAD:** Running as root. Attackers who escape the container have root on the host.
+
+```dockerfile
+FROM node:20-alpine
+COPY . /app
+CMD ["node", "server.js"]
+```
+
+**GOOD:** Create a non-root user and switch to it.
+
+```dockerfile
+FROM node:20-alpine
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+WORKDIR /app
+COPY --chown=appuser:appgroup . .
+USER appuser
+CMD ["node", "server.js"]
+```
+
+For distroless images, use the built-in `nonroot` user.
+
+```dockerfile
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --chown=65532:65532 app /app
+USER 65532
+CMD ["/app"]
+```
+
+### Runtime Flags
+
+Run containers read-only and drop all capabilities.
+
+```bash
+docker run --read-only --cap-drop=ALL --user 65532 myapp:latest
+```
+
+For Kubernetes:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+```
 
 ## Secrets Management
 
-- Never bake secrets into images. Use runtime injection via environment variables or mounted volumes.
-- Prefer secret stores (Vault, AWS Secrets Manager, SOPS) over plain environment variables.
-- Use Docker BuildKit secrets (`--mount=type=secret`) for build-time credentials like private registry tokens.
-- Rotate secrets on a schedule. Automate rotation so it does not depend on human memory.
-- Audit `.dockerignore` to ensure `.env` files, private keys, and credentials never enter the build context.
-- Scan committed Dockerfiles and compose files for hardcoded tokens with `gitleaks` or `trufflehog`.
+**BAD:** Baking secrets into the image. They persist in layers even if deleted.
+
+```dockerfile
+FROM node:20-alpine
+ENV DATABASE_PASSWORD=supersecret
+COPY . /app
+CMD ["node", "server.js"]
+```
+
+**GOOD:** Inject secrets at runtime via environment variables or mounted files.
+
+```bash
+docker run -e DATABASE_PASSWORD="$(cat /secure/db-password)" myapp:latest
+```
+
+For Kubernetes, use Secrets mounted as volumes or environment variables.
+
+```yaml
+env:
+  - name: DATABASE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db-credentials
+        key: password
+```
+
+### Build-Time Secrets
+
+Use BuildKit secrets for credentials needed during build (e.g., private registry tokens).
+
+**BAD:** Copying `.env` file into the image.
+
+```dockerfile
+COPY .env /build/.env
+RUN npm install --registry=https://private.npm.com
+```
+
+**GOOD:** Mount secrets during build without persisting them.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+    npm install --registry=https://private.npm.com
+```
+
+Build with:
+
+```bash
+docker buildx build --secret id=npmrc,src=.npmrc .
+```
+
+### Audit .dockerignore
+
+Ensure secrets never enter the build context.
+
+```
+.env
+.env.*
+*.key
+*.pem
+secrets/
+credentials.json
+```
+
+Scan committed Dockerfiles for hardcoded tokens.
+
+```bash
+gitleaks detect --source . --no-git
+```
 
 ## Supply Chain Security
 
-- Sign images with `cosign` after building. Verify signatures before deploying.
-- Generate SBOM (Software Bill of Materials) with `syft` or `trivy` for every release image.
-- Store SBOMs alongside images in the registry using OCI artifacts.
-- Use `cosign verify-attestation` to confirm provenance before pulling third-party images.
-- Pin dependencies by digest, not tag. Tags are mutable and can be overwritten.
-- Enable Docker Content Trust (`DOCKER_CONTENT_TRUST=1`) to enforce signature verification on pull.
+### Sign Images with Cosign
+
+Sign after building. Verify before deploying.
+
+```bash
+cosign sign myregistry.com/myapp:v1.0.0
+```
+
+Verify signature before pull.
+
+```bash
+cosign verify --key cosign.pub myregistry.com/myapp:v1.0.0
+```
+
+### Generate SBOM
+
+Create a Software Bill of Materials for every release.
+
+```bash
+syft myapp:latest -o json > sbom.json
+trivy image --format cyclonedx --output sbom.json myapp:latest
+```
+
+Attach SBOM to the image as an OCI artifact.
+
+```bash
+cosign attach sbom --sbom sbom.json myregistry.com/myapp:v1.0.0
+```
+
+### Pin Dependencies by Digest
+
+**BAD:** Using mutable tags. Tags can be overwritten.
+
+```dockerfile
+FROM node:20-alpine
+```
+
+**GOOD:** Pin by digest. Digest is immutable.
+
+```dockerfile
+FROM node:20-alpine@sha256:abc123...
+```
+
+Find digests with:
+
+```bash
+docker pull node:20-alpine
+docker inspect node:20-alpine | jq -r '.[0].RepoDigests[0]'
+```
 
 ## Runtime Policies
 
-- Use admission controllers (OPA Gatekeeper, Kyverno) to enforce security policies at deploy time.
-- Block containers that run as root, use privileged mode, or mount the Docker socket.
-- Set resource limits (CPU, memory) to prevent resource exhaustion attacks.
-- Enable seccomp profiles to restrict system calls. Use the default Docker seccomp profile at minimum.
-- Monitor runtime behavior with Falco. Alert on unexpected process execution, network connections, or file access.
-- Isolate sensitive workloads with dedicated node pools and network policies.
+### Kubernetes Admission Control
 
-## CI Integration Checklist
+Use OPA Gatekeeper or Kyverno to enforce policies at deploy time.
 
-- Lint Dockerfiles with `hadolint`. Catch common mistakes before building.
-- Scan for secrets in the build context before `docker build`.
-- Build and scan the image. Fail on HIGH+ vulnerabilities.
-- Sign the image and generate SBOM.
-- Push to a private registry with immutable tags.
-- Verify the signature in the deployment pipeline before rolling out.
+**Example Gatekeeper policy:** Block containers running as root.
+
+```yaml
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPAllowPrivilegeEscalationContainer
+metadata:
+  name: must-run-as-nonroot
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+  parameters:
+    runAsUser:
+      rule: MustRunAsNonRoot
+```
+
+**Example Kyverno policy:** Require CPU and memory limits.
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-limits
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "CPU and memory limits are required"
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+```
+
+### Seccomp Profiles
+
+Restrict system calls available to containers.
+
+**BAD:** Default seccomp profile allows 300+ syscalls.
+
+**GOOD:** Use Docker's default seccomp profile at minimum.
+
+```bash
+docker run --security-opt seccomp=default.json myapp:latest
+```
+
+For Kubernetes:
+
+```yaml
+securityContext:
+  seccompProfile:
+    type: RuntimeDefault
+```
+
+### Runtime Monitoring with Falco
+
+Alert on suspicious behavior inside containers.
+
+**Example Falco rule:** Detect shell execution in containers.
+
+```yaml
+- rule: Shell Spawned in Container
+  desc: Detect shell execution inside a container
+  condition: >
+    spawned_process and
+    container and
+    proc.name in (bash, sh, zsh)
+  output: "Shell spawned in container (user=%user.name container=%container.id image=%container.image.repository)"
+  priority: WARNING
+```
+
+Falco alerts can trigger automated responses (kill pod, notify security team).
+
+## Dockerfile Best Practices
+
+**BAD:** Multiple issues in one Dockerfile.
+
+```dockerfile
+FROM ubuntu:latest
+RUN apt-get update
+RUN apt-get install -y curl wget
+ADD https://example.com/app.tar.gz /app.tar.gz
+RUN tar -xzf /app.tar.gz
+ENV SECRET_KEY=abc123
+COPY . .
+CMD bash start.sh
+```
+
+**GOOD:** Minimal, secure, efficient.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM node:20-alpine@sha256:abc123... AS builder
+WORKDIR /build
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+
+FROM gcr.io/distroless/nodejs20-debian12:nonroot
+WORKDIR /app
+COPY --from=builder /build /app
+USER 65532
+CMD ["server.js"]
+```
+
+**Fixes:**
+
+1. Pin base image by digest.
+2. Use multi-stage build to separate build and runtime.
+3. Use distroless runtime image.
+4. Run as non-root user.
+5. No secrets in environment variables.
+6. Use `COPY` instead of `ADD` (no auto-extraction or URL fetching).
+7. Combine `apt-get update` and `install` in one layer to avoid cache staleness.
+
+## CI Checklist
+
+1. Lint Dockerfile with Hadolint.
+
+```bash
+hadolint Dockerfile
+```
+
+2. Scan for secrets in build context.
+
+```bash
+gitleaks detect --source . --no-git
+```
+
+3. Build and scan image.
+
+```bash
+docker build -t myapp:latest .
+trivy image myapp:latest --exit-code 1 --severity HIGH,CRITICAL
+```
+
+4. Sign image and generate SBOM.
+
+```bash
+cosign sign myregistry.com/myapp:v1.0.0
+syft myapp:latest -o json > sbom.json
+```
+
+5. Push to registry with immutable tag.
+
+```bash
+docker tag myapp:latest myregistry.com/myapp:v1.0.0
+docker push myregistry.com/myapp:v1.0.0
+```
+
+6. Verify signature before deploying.
+
+```bash
+cosign verify --key cosign.pub myregistry.com/myapp:v1.0.0
+```
 
 ## Common Mistakes
 
-- Trusting base images without scanning them. Official images still contain CVEs.
-- Using `ADD` instead of `COPY`. `ADD` auto-extracts archives and fetches URLs, expanding attack surface.
-- Ignoring layer caching behavior. Changing a `COPY` early in the Dockerfile invalidates all subsequent layers.
-- Running `apt-get update` and `apt-get install` in separate layers. The update layer gets cached and becomes stale.
-- Mounting the Docker socket into containers. This grants full host access.
+**Using `latest` tag.** Tags are mutable. Pin versions or digests.
+
+**Using `ADD` instead of `COPY`.** `ADD` auto-extracts archives and fetches URLs, expanding attack surface.
+
+**Separate `apt-get update` and `install` layers.** The update layer gets cached and becomes stale.
+
+**BAD:**
+
+```dockerfile
+RUN apt-get update
+RUN apt-get install -y curl
+```
+
+**GOOD:**
+
+```dockerfile
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+```
+
+**Mounting Docker socket.** Grants full host access. Never do this in production.
+
+```bash
+# BAD
+docker run -v /var/run/docker.sock:/var/run/docker.sock myapp
+```

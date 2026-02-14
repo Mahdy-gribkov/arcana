@@ -1,187 +1,342 @@
 ---
 name: asset-optimization
-description: Asset pipeline optimization, compression, streaming, and resource management for efficient game development and delivery.
+description: Optimize game assets through compression, format conversion, and streaming. Covers textures, meshes, audio, and automated batch processing workflows.
 ---
 
 # Asset Optimization
 
-## Asset Pipeline Overview
+## Workflow Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ASSET PIPELINE FLOW                       │
-├─────────────────────────────────────────────────────────────┤
-│  SOURCE ASSETS (Large, Editable):                            │
-│  .psd, .fbx, .blend, .wav, .tga                             │
-│                              ↓                               │
-│  IMPORT SETTINGS:                                            │
-│  Compression, Format, Quality, Platform overrides           │
-│                              ↓                               │
-│  PROCESSING:                                                 │
-│  Compression, Mipmaps, LOD generation, Format conversion    │
-│                              ↓                               │
-│  RUNTIME ASSETS (Optimized):                                 │
-│  .dds, .ktx, .ogg, engine-specific formats                  │
-│                              ↓                               │
-│  PACKAGING:                                                  │
-│  Asset bundles, streaming chunks, platform builds           │
-└─────────────────────────────────────────────────────────────┘
+Asset optimization follows this 4-step pattern:
+
+1. **Audit** - Identify largest assets, measure load times
+2. **Compress** - Apply platform-specific compression
+3. **Convert** - Transform to efficient runtime formats
+4. **Validate** - Verify quality and measure savings
+
+## Texture Optimization Workflow
+
+### Step 1: Audit Current Usage
+
+```bash
+# Find all textures and sort by size
+find ./Assets/Textures -type f \( -name "*.png" -o -name "*.tga" \) -exec ls -lh {} \; | sort -k5 -hr | head -20
+
+# Output total size
+du -sh ./Assets/Textures
 ```
 
-## Texture Optimization
+### Step 2: Apply Compression
 
+**BAD - Uncompressed RGBA32:**
 ```
-TEXTURE COMPRESSION FORMATS:
-┌─────────────────────────────────────────────────────────────┐
-│  PLATFORM   │ FORMAT      │ QUALITY  │ SIZE/PIXEL         │
-├─────────────┼─────────────┼──────────┼────────────────────┤
-│  PC/Console │ BC7         │ Best     │ 1 byte             │
-│  PC/Console │ BC1 (DXT1)  │ Good     │ 0.5 byte           │
-│  iOS        │ ASTC 6x6    │ Great    │ 0.89 byte          │
-│  Android    │ ETC2        │ Good     │ 0.5-1 byte         │
-│  Mobile     │ ASTC 8x8    │ Good     │ 0.5 byte           │
-│  Uncompressed│ RGBA32     │ Perfect  │ 4 bytes            │
-└─────────────┴─────────────┴──────────┴────────────────────┘
-
-TEXTURE SIZE GUIDELINES:
-┌─────────────────────────────────────────────────────────────┐
-│  Character (main):    2048x2048                             │
-│  Character (NPC):     1024x1024                             │
-│  Props (large):       1024x1024                             │
-│  Props (small):       512x512 or 256x256                    │
-│  UI elements:         Power of 2, vary by size             │
-│  Environment:         2048x2048 (tiling)                   │
-│  Mobile maximum:      1024x1024 (prefer 512)               │
-└─────────────────────────────────────────────────────────────┘
+Character_Diffuse.png: 2048x2048, RGBA32
+Size: 16 MB
+Memory: 16 MB at runtime
 ```
 
-## Mesh Optimization
-
+**GOOD - Platform-optimized BC7:**
 ```
-POLYGON BUDGET GUIDELINES:
-┌─────────────────────────────────────────────────────────────┐
-│  PLATFORM   │ HERO CHAR │ NPC      │ PROP     │ SCENE     │
-├─────────────┼───────────┼──────────┼──────────┼───────────┤
-│  PC High    │ 100K      │ 30K      │ 10K      │ 10M       │
-│  PC Med     │ 50K       │ 15K      │ 5K       │ 5M        │
-│  Console    │ 80K       │ 25K      │ 8K       │ 8M        │
-│  Mobile     │ 10K       │ 3K       │ 500      │ 500K      │
-│  VR         │ 30K       │ 10K      │ 2K       │ 2M        │
-└─────────────┴───────────┴──────────┴──────────┴───────────┘
-
-LOD CONFIGURATION:
-┌─────────────────────────────────────────────────────────────┐
-│  LOD0: 100% triangles  │  0-10m   │ Full detail           │
-│  LOD1: 50% triangles   │  10-30m  │ Reduced               │
-│  LOD2: 25% triangles   │  30-60m  │ Low detail            │
-│  LOD3: 10% triangles   │  60m+    │ Billboard/Impostor    │
-└─────────────────────────────────────────────────────────────┘
+Character_Diffuse.dds: 2048x2048, BC7
+Size: 2 MB
+Memory: 2 MB at runtime (8x savings)
 ```
 
-## Audio Optimization
+### Step 3: Batch Convert with texconv
 
-```
-AUDIO COMPRESSION:
-┌─────────────────────────────────────────────────────────────┐
-│  TYPE        │ FORMAT  │ QUALITY   │ STREAMING            │
-├─────────────┼─────────┼───────────┼──────────────────────┤
-│  Music       │ Vorbis  │ 128-192   │ Always stream        │
-│  SFX (short) │ ADPCM   │ High      │ Decompress on load   │
-│  SFX (long)  │ Vorbis  │ 128       │ Stream if > 1MB      │
-│  Voice       │ Vorbis  │ 96-128    │ Stream               │
-│  Ambient     │ Vorbis  │ 96        │ Stream               │
-└─────────────┴─────────┴───────────┴──────────────────────┘
+```bash
+# Windows - Convert all PNG to BC7 DDS with mipmaps
+for file in ./source/*.png; do
+    texconv -f BC7 -m 0 -o ./optimized/ "$file"
+done
 
-AUDIO MEMORY BUDGET:
-• Mobile: 20-50 MB
-• Console: 100-200 MB
-• PC: 200-500 MB
+# Mobile - Convert to ASTC 6x6
+for file in ./source/*.png; do
+    astcenc -cl "$file" ./optimized/$(basename "$file" .png).astc 6x6 -medium
+done
 ```
 
-## Batch Processing Script
+### Step 4: Validate Quality
+
+```bash
+# Compare file sizes
+du -sh ./source ./optimized
+
+# Visual diff (requires ImageMagick)
+compare -metric PSNR source.png optimized.png diff.png
+```
+
+## WebP/AVIF Conversion for Web
+
+### WebP Conversion
+
+```bash
+# Single file - 80% quality, lossless alpha
+cwebp -q 80 input.png -o output.webp
+
+# Batch convert entire directory
+find ./images -name "*.png" -exec bash -c 'cwebp -q 80 "$0" -o "${0%.png}.webp"' {} \;
+
+# With fallback generation
+for img in ./images/*.png; do
+    cwebp -q 80 "$img" -o "${img%.png}.webp"
+    # Keep original as fallback
+done
+```
+
+**Before/After Example:**
+```
+hero-banner.png:  1.2 MB (PNG, lossless)
+hero-banner.webp: 180 KB (WebP, 85% savings)
+```
+
+### AVIF Conversion (Better Compression)
+
+```bash
+# Install avif encoder
+npm install -g @squoosh/cli
+
+# Convert with quality 60 (good balance)
+squoosh-cli --avif '{"cqLevel":60}' input.png
+
+# Batch process
+find ./images -name "*.png" | xargs squoosh-cli --avif '{"cqLevel":60}'
+```
+
+**Compression Comparison:**
+```
+product-photo.jpg:   450 KB (JPEG)
+product-photo.webp:  210 KB (WebP, 53% savings)
+product-photo.avif:  120 KB (AVIF, 73% savings)
+```
+
+### HTML Picture Element with Fallbacks
+
+```html
+<picture>
+  <source srcset="hero.avif" type="image/avif">
+  <source srcset="hero.webp" type="image/webp">
+  <img src="hero.png" alt="Hero banner" width="1200" height="600">
+</picture>
+```
+
+## Mesh Optimization Workflow
+
+### Step 1: Analyze Polygon Count
 
 ```python
-# ✅ Production-Ready: Asset Batch Processor
+# Blender script - print mesh stats
+import bpy
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        print(f"{obj.name}: {len(obj.data.polygons)} tris")
+```
+
+### Step 2: Generate LODs
+
+**BAD - Single LOD for all distances:**
+```
+Character.fbx: 80,000 triangles at all distances
+Draw calls: 100 characters = 8M triangles/frame
+```
+
+**GOOD - Distance-based LODs:**
+```
+Character_LOD0.fbx: 80,000 tris (0-10m)
+Character_LOD1.fbx: 30,000 tris (10-30m)
+Character_LOD2.fbx: 10,000 tris (30-60m)
+Character_LOD3.fbx:  2,000 tris (60m+)
+
+Draw calls at 30m: 100 characters = 1M triangles/frame (8x savings)
+```
+
+### Step 3: Apply Mesh Compression
+
+```csharp
+// Unity - Enable mesh compression in import settings
+ModelImporter importer = (ModelImporter)assetImporter;
+importer.meshCompression = ModelImporterMeshCompression.High;
+importer.optimizeMeshPolygons = true;
+importer.optimizeMeshVertices = true;
+```
+
+## Audio Optimization Workflow
+
+### Step 1: Identify Compression Strategy
+
+```
+Music (long, looped):      Vorbis 128-192 kbps, STREAM
+SFX (short, one-shot):     ADPCM, DECOMPRESS_ON_LOAD
+Voice (dialogue):          Vorbis 96-128 kbps, STREAM
+Ambient (background):      Vorbis 96 kbps, STREAM
+```
+
+### Step 2: Convert Audio Files
+
+```bash
+# Convert WAV to Vorbis OGG
+ffmpeg -i music.wav -c:a libvorbis -b:a 128k music.ogg
+
+# Batch convert all music files
+for file in ./audio/music/*.wav; do
+    ffmpeg -i "$file" -c:a libvorbis -b:a 128k "${file%.wav}.ogg"
+done
+
+# Convert to ADPCM for short SFX
+ffmpeg -i sfx.wav -c:a adpcm_ima_wav sfx_compressed.wav
+```
+
+**Before/After Example:**
+```
+background_music.wav: 45 MB (uncompressed PCM)
+background_music.ogg:  4 MB (Vorbis 128kbps, 91% savings)
+```
+
+### Step 3: Set Unity Import Settings
+
+```csharp
+// Unity Editor script - batch configure audio
+AudioImporter audioImporter = (AudioImporter)assetImporter;
+
+if (assetPath.Contains("Music"))
+{
+    audioImporter.loadInBackground = true;
+    audioImporter.preloadAudioData = false;
+    audioImporter.compressionFormat = AudioCompressionFormat.Vorbis;
+    audioImporter.quality = 0.7f; // 128 kbps
+}
+else if (assetPath.Contains("SFX"))
+{
+    audioImporter.loadInBackground = false;
+    audioImporter.preloadAudioData = true;
+    audioImporter.compressionFormat = AudioCompressionFormat.ADPCM;
+}
+```
+
+## Automated Batch Processing
+
+```python
+#!/usr/bin/env python3
+# Production-ready asset processor
 import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-def process_textures(input_dir: Path, output_dir: Path, platform: str):
-    """Batch process textures for target platform."""
+PLATFORM_SETTINGS = {
+    'pc': {'format': 'bc7', 'max_size': 4096, 'quality': 'high'},
+    'mobile': {'format': 'astc', 'max_size': 1024, 'quality': 'medium'},
+    'console': {'format': 'bc7', 'max_size': 2048, 'quality': 'high'},
+}
 
-    settings = {
-        'pc': {'format': 'bc7', 'max_size': 4096},
-        'mobile': {'format': 'astc', 'max_size': 1024},
-        'console': {'format': 'bc7', 'max_size': 2048},
-    }
+def compress_texture(input_path: Path, output_path: Path, platform: str):
+    """Compress single texture for target platform."""
+    config = PLATFORM_SETTINGS[platform]
 
-    config = settings.get(platform, settings['pc'])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    cmd = [
+        'texconv',
+        '-f', config['format'],
+        '-w', str(config['max_size']),
+        '-h', str(config['max_size']),
+        '-m', '0',  # Generate all mipmaps
+        '-sepalpha',  # Separate alpha channel
+        '-o', str(output_path.parent),
+        str(input_path)
+    ]
+
+    subprocess.run(cmd, check=True, capture_output=True)
+
+    # Report savings
+    original_size = input_path.stat().st_size
+    compressed_size = output_path.stat().st_size
+    savings = (1 - compressed_size / original_size) * 100
+    print(f"{input_path.name}: {savings:.1f}% savings")
+
+def batch_process(input_dir: Path, output_dir: Path, platform: str, workers: int = 8):
+    """Process all textures in parallel."""
     textures = list(input_dir.glob('**/*.png')) + list(input_dir.glob('**/*.tga'))
 
-    def process_single(texture: Path):
-        output_path = output_dir / texture.relative_to(input_dir)
-        output_path = output_path.with_suffix('.dds')
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = []
+        for texture in textures:
+            rel_path = texture.relative_to(input_dir)
+            output_path = output_dir / rel_path.with_suffix('.dds')
+            futures.append(executor.submit(compress_texture, texture, output_path, platform))
 
-        subprocess.run([
-            'texconv',
-            '-f', config['format'],
-            '-w', str(config['max_size']),
-            '-h', str(config['max_size']),
-            '-m', '0',  # Generate all mipmaps
-            '-o', str(output_path.parent),
-            str(texture)
-        ])
+        # Wait for all
+        for future in futures:
+            future.result()
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        executor.map(process_single, textures)
+if __name__ == '__main__':
+    batch_process(
+        input_dir=Path('./Assets/Textures/Source'),
+        output_dir=Path('./Assets/Textures/Optimized'),
+        platform='pc'
+    )
 ```
 
-## 🔧 Troubleshooting
+## Platform-Specific Guidelines
+
+### Mobile Budget
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ PROBLEM: Build size too large                               │
-├─────────────────────────────────────────────────────────────┤
-│ SOLUTIONS:                                                   │
-│ → Audit unused assets                                       │
-│ → Increase texture compression                              │
-│ → Enable mesh compression                                   │
-│ → Split into downloadable content                           │
-│ → Use texture atlases                                       │
-└─────────────────────────────────────────────────────────────┘
+Textures:  Max 1024x1024, prefer 512x512
+           ASTC 8x8 compression (0.5 bytes/pixel)
+           Total budget: 100-500 MB
 
-┌─────────────────────────────────────────────────────────────┐
-│ PROBLEM: Long import times                                  │
-├─────────────────────────────────────────────────────────────┤
-│ SOLUTIONS:                                                   │
-│ → Use asset database caching                                │
-│ → Import in batches                                         │
-│ → Use faster SSD storage                                    │
-│ → Pre-process assets in CI/CD                               │
-└─────────────────────────────────────────────────────────────┘
+Meshes:    Characters: 10K tris max
+           Props: 500 tris max
+           Total scene: 500K tris
 
-┌─────────────────────────────────────────────────────────────┐
-│ PROBLEM: Assets look blurry                                 │
-├─────────────────────────────────────────────────────────────┤
-│ SOLUTIONS:                                                   │
-│ → Reduce compression for important assets                   │
-│ → Increase texture resolution                               │
-│ → Check mipmap settings                                     │
-│ → Use appropriate filtering mode                            │
-└─────────────────────────────────────────────────────────────┘
+Audio:     Vorbis compression required
+           Stream files > 200 KB
+           Total budget: 20-50 MB
 ```
 
-## Memory Budgets
+### Console/PC Budget
 
-| Platform | Textures | Meshes | Audio | Total |
-|----------|----------|--------|-------|-------|
-| Mobile Low | 100 MB | 50 MB | 30 MB | 200 MB |
-| Mobile High | 500 MB | 200 MB | 100 MB | 1 GB |
-| Console | 2 GB | 1 GB | 200 MB | 4 GB |
-| PC | 4 GB | 2 GB | 500 MB | 8 GB |
+```
+Textures:  Max 4096x4096, common 2048x2048
+           BC7 compression (1 byte/pixel)
+           Total budget: 2-4 GB
+
+Meshes:    Hero characters: 80-100K tris
+           NPCs: 25-30K tris
+           Total scene: 8-10M tris
+
+Audio:     Light compression acceptable
+           Stream music and voice
+           Total budget: 200-500 MB
+```
+
+## Quick Reference
+
+**Texture Formats by Platform:**
+```
+PC/Console: BC7 (best) or BC1/DXT1 (smaller)
+iOS:        ASTC 6x6 (balanced) or PVRTC (older)
+Android:    ETC2 or ASTC 8x8
+Web:        WebP (good) or AVIF (best)
+```
+
+**Compression Tools:**
+```bash
+texconv      # DirectX texture tool (BC7, BC1)
+astcenc      # ARM ASTC encoder
+cwebp        # Google WebP encoder
+squoosh-cli  # Multi-format web optimizer
+ffmpeg       # Audio/video conversion
+```
+
+**File Size Targets:**
+```
+Character texture: 1-2 MB (compressed)
+Environment texture: 2-4 MB (compressed)
+Music track: 3-5 MB (Vorbis)
+SFX: 10-100 KB (ADPCM)
+```
 
 ---
 
-**Use this skill**: When optimizing assets, managing memory, or streamlining pipelines.
+**Use this skill**: When build sizes are too large, assets load slowly, or memory usage is high.

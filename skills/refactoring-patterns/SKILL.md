@@ -1,103 +1,541 @@
 ---
 name: refactoring-patterns
-description: Code refactoring patterns including extract, inline, move, rename, dead code removal, dependency injection, SOLID principles, code smell detection, and tech debt prioritization.
+description: Code refactoring patterns with before/after diffs for extract method, extract class, inline, move, rename, dead code removal, dependency injection, and code smell detection.
 ---
-
-## Purpose
-
-Apply systematic refactoring patterns to improve code structure without changing behavior. This skill covers identifying when to refactor, which pattern to apply, and how to prioritize technical debt.
 
 ## Extract Method
 
-- Pull a block of code into a named function when the block does one logical thing and the surrounding function does more.
-- Name the extracted method after what it does, not how it does it. `validateUserInput()` over `checkStuff()`.
-- Pass only the data the method needs. If you pass more than 3 parameters, consider an object or struct.
-- Preserve return semantics. If the original block returned early, the extracted method should return a value the caller can act on.
-- Test before and after extraction. The behavior must not change.
-- Extract when you see comments explaining what a code block does. The method name replaces the comment.
+**When:** A code block does one logical thing within a function that does more.
+
+**BEFORE:**
+
+```typescript
+function processOrder(order: Order) {
+  // Validate order
+  if (!order.items || order.items.length === 0) {
+    throw new Error('Order must have items');
+  }
+  if (order.total <= 0) {
+    throw new Error('Order total must be positive');
+  }
+
+  // Calculate tax
+  let tax = 0;
+  for (const item of order.items) {
+    tax += item.price * item.quantity * 0.08;
+  }
+
+  // Save to database
+  db.orders.insert({ ...order, tax });
+}
+```
+
+**AFTER:**
+
+```typescript
+function processOrder(order: Order) {
+  validateOrder(order);
+  const tax = calculateTax(order.items);
+  saveOrder(order, tax);
+}
+
+function validateOrder(order: Order) {
+  if (!order.items || order.items.length === 0) {
+    throw new Error('Order must have items');
+  }
+  if (order.total <= 0) {
+    throw new Error('Order total must be positive');
+  }
+}
+
+function calculateTax(items: OrderItem[]): number {
+  return items.reduce((sum, item) => sum + item.price * item.quantity * 0.08, 0);
+}
+
+function saveOrder(order: Order, tax: number) {
+  db.orders.insert({ ...order, tax });
+}
+```
+
+**Why:** Each function has a single responsibility. Method names replace comments.
 
 ## Extract Class
 
-- Move a group of related fields and methods into a new class when a class has multiple responsibilities.
-- Look for fields that are always used together. They likely belong in their own class.
-- The original class delegates to the new class. Keep the public API stable during the transition.
-- Apply when a class exceeds 200-300 lines or when you cannot describe its purpose in one sentence.
-- Name the new class after its single responsibility.
+**When:** A class has multiple responsibilities or a group of fields are always used together.
 
-## Inline
+**BEFORE:**
 
-- Inline a method when its body is as clear as its name. Remove the indirection.
-- Inline a variable when it is used once and the expression is self-explanatory.
-- Inline a class when it does too little to justify its existence. Move its members back to the caller.
-- Do not inline if the method is called from multiple places. That indicates it earns its existence.
-- Inline temporary variables that obscure the flow: `let x = getPrice(); return x;` becomes `return getPrice();`.
+```typescript
+class User {
+  id: number;
+  name: string;
+  email: string;
+  street: string;
+  city: string;
+  zipCode: string;
+  country: string;
 
-## Move
+  getFullAddress(): string {
+    return `${this.street}, ${this.city}, ${this.zipCode}, ${this.country}`;
+  }
 
-- Move a method to the class that owns most of the data it uses. Follow the data.
-- Move a field when another class accesses it more than the owning class does.
-- Move a file when its directory no longer reflects its purpose.
-- Update all references after moving. IDE refactoring tools handle this, but verify with a build.
-- Move tests alongside the code they test. Co-location reduces cognitive load.
+  updateAddress(street: string, city: string, zipCode: string, country: string) {
+    this.street = street;
+    this.city = city;
+    this.zipCode = zipCode;
+    this.country = country;
+  }
+}
+```
+
+**AFTER:**
+
+```typescript
+class Address {
+  constructor(
+    public street: string,
+    public city: string,
+    public zipCode: string,
+    public country: string
+  ) {}
+
+  getFullAddress(): string {
+    return `${this.street}, ${this.city}, ${this.zipCode}, ${this.country}`;
+  }
+}
+
+class User {
+  id: number;
+  name: string;
+  email: string;
+  address: Address;
+
+  updateAddress(address: Address) {
+    this.address = address;
+  }
+}
+```
+
+**Why:** Address is a cohesive concept. Extracting it makes User simpler and Address reusable.
+
+## Inline Method
+
+**When:** A method's body is as clear as its name. The indirection adds no value.
+
+**BEFORE:**
+
+```typescript
+function getDiscountedPrice(price: number, discount: number): number {
+  return applyDiscount(price, discount);
+}
+
+function applyDiscount(price: number, discount: number): number {
+  return price * (1 - discount);
+}
+```
+
+**AFTER:**
+
+```typescript
+function getDiscountedPrice(price: number, discount: number): number {
+  return price * (1 - discount);
+}
+```
+
+**Why:** The method `applyDiscount` is called once and its body is obvious. Inlining simplifies.
+
+## Inline Variable
+
+**When:** A variable is used once and the expression is self-explanatory.
+
+**BEFORE:**
+
+```typescript
+function isEligibleForDiscount(user: User): boolean {
+  const hasPremiumAccount = user.accountType === 'premium';
+  return hasPremiumAccount;
+}
+```
+
+**AFTER:**
+
+```typescript
+function isEligibleForDiscount(user: User): boolean {
+  return user.accountType === 'premium';
+}
+```
+
+**Why:** The variable name does not add clarity. The expression is self-documenting.
+
+## Move Method
+
+**When:** A method uses data from another class more than its own class.
+
+**BEFORE:**
+
+```typescript
+class Order {
+  items: OrderItem[];
+  customerId: number;
+
+  calculateShipping(customer: Customer): number {
+    if (customer.isPremium) {
+      return 0;
+    }
+    return this.items.length * 5;
+  }
+}
+
+class Customer {
+  id: number;
+  isPremium: boolean;
+}
+```
+
+**AFTER:**
+
+```typescript
+class Order {
+  items: OrderItem[];
+  customerId: number;
+
+  calculateShipping(customer: Customer): number {
+    return customer.calculateShippingCost(this.items.length);
+  }
+}
+
+class Customer {
+  id: number;
+  isPremium: boolean;
+
+  calculateShippingCost(itemCount: number): number {
+    if (this.isPremium) {
+      return 0;
+    }
+    return itemCount * 5;
+  }
+}
+```
+
+**Why:** Shipping logic depends on customer data. Moving it to Customer class follows the data.
 
 ## Rename
 
-- Rename when the current name is misleading, abbreviated, or outdated.
-- Use the project's naming conventions consistently. Do not mix `camelCase` and `snake_case` within a module.
-- Rename in a dedicated commit. Mixing renames with logic changes makes review harder.
-- Search for string references (config files, documentation, API contracts) that the IDE rename tool misses.
-- Prefer longer, descriptive names over short, ambiguous ones. `userAccountBalance` over `bal`.
+**When:** The current name is misleading, abbreviated, or outdated.
+
+**BEFORE:**
+
+```typescript
+function calc(x: number, y: number): number {
+  return x * y * 0.08;
+}
+
+const res = calc(100, 2);
+```
+
+**AFTER:**
+
+```typescript
+function calculateSalesTax(price: number, quantity: number): number {
+  return price * quantity * 0.08;
+}
+
+const salesTax = calculateSalesTax(100, 2);
+```
+
+**Why:** Descriptive names make intent clear. Abbreviations obscure meaning.
 
 ## Dead Code Elimination
 
-- Delete code that is never called. Version control preserves history if you need it back.
-- Search for unused exports, unreachable branches, and commented-out blocks.
-- Use static analysis tools: `ts-prune` for TypeScript, `deadcode` for Go, `vulture` for Python.
-- Remove feature flags for features that shipped months ago. Stale flags are dead code with extra complexity.
-- Delete unused dependencies from package manifests. Each dependency is an attack surface and a build cost.
-- Remove unused test fixtures and helpers. They slow down comprehension.
+**When:** Code is unreachable, unused, or commented out.
+
+**BEFORE:**
+
+```typescript
+function processPayment(amount: number, method: string) {
+  if (method === 'credit') {
+    chargeCreditCard(amount);
+  } else if (method === 'paypal') {
+    chargePayPal(amount);
+  }
+  // else if (method === 'bitcoin') {
+  //   chargeBitcoin(amount);
+  // }
+}
+
+function chargeBitcoin(amount: number) {
+  // No longer supported
+}
+```
+
+**AFTER:**
+
+```typescript
+function processPayment(amount: number, method: string) {
+  if (method === 'credit') {
+    chargeCreditCard(amount);
+  } else if (method === 'paypal') {
+    chargePayPal(amount);
+  }
+}
+```
+
+**Why:** Dead code clutters the codebase. Version control preserves history.
 
 ## Dependency Injection
 
-- Pass dependencies as constructor or function parameters instead of creating them internally.
-- This makes testing trivial: inject a mock instead of the real dependency.
-- Use interfaces (TypeScript) or protocols (Python) to define the contract, not the concrete type.
-- Avoid service locator patterns. They hide dependencies and make call graphs opaque.
-- Keep the dependency graph shallow. If A depends on B depends on C depends on D, consider flattening.
-- Constructor injection for required dependencies. Method injection for optional or context-specific ones.
+**When:** A class creates its dependencies internally. Hard to test and couples implementation.
 
-## SOLID Principles Applied
+**BEFORE:**
 
-- **Single Responsibility:** Each module, class, or function has one reason to change. If a function parses input and writes to a database, split it.
-- **Open/Closed:** Extend behavior through composition or new implementations, not by modifying existing code. Use strategy patterns.
-- **Liskov Substitution:** Subtypes must work anywhere the parent type is expected. Do not override methods to throw "not implemented".
-- **Interface Segregation:** Define small, focused interfaces. A client should not depend on methods it does not use.
-- **Dependency Inversion:** High-level modules depend on abstractions, not concrete implementations. Define interfaces at the boundary.
+```typescript
+class OrderService {
+  private db = new Database();
+  private emailer = new EmailService();
 
-## Code Smell Detection
+  async createOrder(order: Order) {
+    await this.db.orders.insert(order);
+    await this.emailer.send(order.email, 'Order confirmed');
+  }
+}
+```
 
-- **Long Method:** Over 20-30 lines. Extract smaller methods.
-- **Large Class:** Over 200-300 lines or more than one responsibility. Extract classes.
-- **Feature Envy:** A method uses another class's data more than its own. Move the method.
-- **Data Clumps:** Groups of variables that appear together repeatedly. Extract into a struct or class.
-- **Primitive Obsession:** Using strings or numbers where a domain type would be clearer. Create value objects.
-- **Shotgun Surgery:** One change requires edits in many files. Consolidate related logic.
-- **Divergent Change:** One class changes for multiple unrelated reasons. Split responsibilities.
+**AFTER:**
+
+```typescript
+class OrderService {
+  constructor(
+    private db: Database,
+    private emailer: EmailService
+  ) {}
+
+  async createOrder(order: Order) {
+    await this.db.orders.insert(order);
+    await this.emailer.send(order.email, 'Order confirmed');
+  }
+}
+
+// Usage
+const db = new Database();
+const emailer = new EmailService();
+const orderService = new OrderService(db, emailer);
+
+// Testing
+const mockDb = new MockDatabase();
+const mockEmailer = new MockEmailService();
+const testService = new OrderService(mockDb, mockEmailer);
+```
+
+**Why:** Dependencies are explicit. Testing with mocks is trivial.
+
+## Replace Conditional with Polymorphism
+
+**When:** A switch or if/else chain selects behavior based on type.
+
+**BEFORE:**
+
+```typescript
+class Order {
+  type: 'standard' | 'express' | 'overnight';
+
+  calculateShipping(): number {
+    if (this.type === 'standard') {
+      return 5;
+    } else if (this.type === 'express') {
+      return 15;
+    } else if (this.type === 'overnight') {
+      return 30;
+    }
+  }
+}
+```
+
+**AFTER:**
+
+```typescript
+interface Order {
+  calculateShipping(): number;
+}
+
+class StandardOrder implements Order {
+  calculateShipping(): number {
+    return 5;
+  }
+}
+
+class ExpressOrder implements Order {
+  calculateShipping(): number {
+    return 15;
+  }
+}
+
+class OvernightOrder implements Order {
+  calculateShipping(): number {
+    return 30;
+  }
+}
+```
+
+**Why:** Adding new order types requires no changes to existing code. Open/closed principle.
+
+## Extract Variable
+
+**When:** An expression is complex or used multiple times.
+
+**BEFORE:**
+
+```typescript
+if (order.items.length > 10 && order.total > 1000 && order.customer.isPremium) {
+  applyDiscount(order);
+}
+```
+
+**AFTER:**
+
+```typescript
+const isLargeOrder = order.items.length > 10;
+const isHighValue = order.total > 1000;
+const isPremiumCustomer = order.customer.isPremium;
+
+if (isLargeOrder && isHighValue && isPremiumCustomer) {
+  applyDiscount(order);
+}
+```
+
+**Why:** Named variables document intent. Complex conditions become readable.
+
+## Code Smells
+
+### Long Method
+
+**Smell:** Method exceeds 20-30 lines.
+
+**Fix:** Extract methods for logical blocks.
+
+### Large Class
+
+**Smell:** Class exceeds 200-300 lines or has multiple responsibilities.
+
+**Fix:** Extract classes for cohesive groups of fields and methods.
+
+### Feature Envy
+
+**Smell:** A method uses another class's data more than its own.
+
+**BEFORE:**
+
+```typescript
+class Report {
+  generateSummary(user: User): string {
+    return `${user.name} has ${user.orders.length} orders totaling $${user.getTotalSpent()}`;
+  }
+}
+```
+
+**AFTER:**
+
+```typescript
+class User {
+  getSummary(): string {
+    return `${this.name} has ${this.orders.length} orders totaling $${this.getTotalSpent()}`;
+  }
+}
+```
+
+### Data Clumps
+
+**Smell:** Groups of variables appear together repeatedly.
+
+**BEFORE:**
+
+```typescript
+function createUser(name: string, street: string, city: string, zipCode: string) {
+  // ...
+}
+
+function updateUser(id: number, name: string, street: string, city: string, zipCode: string) {
+  // ...
+}
+```
+
+**AFTER:**
+
+```typescript
+interface Address {
+  street: string;
+  city: string;
+  zipCode: string;
+}
+
+function createUser(name: string, address: Address) {
+  // ...
+}
+
+function updateUser(id: number, name: string, address: Address) {
+  // ...
+}
+```
+
+### Primitive Obsession
+
+**Smell:** Using strings or numbers where a domain type is clearer.
+
+**BEFORE:**
+
+```typescript
+function sendEmail(email: string) {
+  if (!email.includes('@')) {
+    throw new Error('Invalid email');
+  }
+  // ...
+}
+```
+
+**AFTER:**
+
+```typescript
+class Email {
+  constructor(private value: string) {
+    if (!value.includes('@')) {
+      throw new Error('Invalid email');
+    }
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
+
+function sendEmail(email: Email) {
+  // Email is guaranteed valid
+}
+```
 
 ## Technical Debt Prioritization
 
-- Score each debt item on: frequency of encounter, blast radius if it causes a bug, and effort to fix.
-- Fix debt that blocks current feature work first. Do not create a separate "refactoring sprint."
-- Apply the boy scout rule: leave code cleaner than you found it, one small improvement per pull request.
-- Track debt items in the issue tracker with a dedicated label. Make them visible, not hidden.
-- Prioritize debt in shared code paths over debt in rarely-touched modules.
-- Measure improvement: track cyclomatic complexity, test coverage, and build times over months.
+### Scoring Formula
+
+Score = (Frequency × Blast Radius) / Effort
+
+- **Frequency:** How often is this code touched? (1-10)
+- **Blast Radius:** How many users/features are affected if it breaks? (1-10)
+- **Effort:** How long to fix? (1-10)
+
+**Example:**
+
+| Debt Item | Frequency | Blast Radius | Effort | Score |
+|-----------|-----------|--------------|--------|-------|
+| Refactor auth logic | 8 | 10 | 5 | 16 |
+| Remove unused util | 1 | 1 | 1 | 1 |
+| Split large class | 5 | 5 | 3 | 8.3 |
+
+Fix highest-score items first.
 
 ## Refactoring Workflow
 
-- Write tests first if none exist. Refactoring without tests is gambling.
-- Make one refactoring move per commit. Small commits are easy to review and easy to revert.
-- Run tests after every move. If tests fail, the refactoring changed behavior.
-- Use IDE automated refactoring tools when available. They are less error-prone than manual edits.
-- Review the diff before committing. Automated tools sometimes produce unexpected changes.
-- Communicate refactoring intent in pull request descriptions. Explain why the structure changed.
+1. Write tests if none exist. Refactoring without tests is gambling.
+2. Make one change per commit. Small commits are reviewable and revertable.
+3. Run tests after every change. Failing tests mean behavior changed.
+4. Use IDE refactoring tools. They are less error-prone than manual edits.
+5. Review the diff before committing. Automated tools sometimes surprise.
+6. Explain intent in pull request descriptions. Clarify why structure changed.

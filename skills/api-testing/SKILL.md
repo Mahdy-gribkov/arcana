@@ -1,21 +1,11 @@
 ---
 name: api-testing
-description: "API testing and contract testing with Pact, mocking strategies, load testing using k6 and Locust, OpenAPI schema validation, and Postman/Insomnia collection management."
+description: Contract testing with Pact, API mocking with MSW, load testing with k6/Locust, OpenAPI validation, and Postman/Insomnia automation. Code-first patterns for catching regressions before they reach production.
 ---
-
-## Purpose
-
-Verify API correctness, enforce contracts between services, validate performance under load, and maintain portable test collections. Catch regressions before they reach consumers.
 
 ## Contract Testing with Pact
 
-### Consumer-Driven Contracts
-
-- The consumer defines the contract: what requests it sends and what responses it expects.
-- The provider verifies the contract: it runs the Pact tests against its actual implementation.
-- Contracts live in a Pact Broker or Pactflow. Both sides pull from the same source of truth.
-
-### Consumer Side
+### Consumer Side: Define the Contract
 
 ```typescript
 import { PactV3 } from '@pact-foundation/pact';
@@ -33,35 +23,58 @@ describe('User API', () => {
       .withRequest({ method: 'GET', path: '/users/1' })
       .willRespondWith({
         status: 200,
-        body: { id: 1, name: 'Alice' },
+        headers: { 'Content-Type': 'application/json' },
+        body: { id: 1, name: 'Alice', email: 'alice@example.com' },
       })
       .executeTest(async (mockServer) => {
         const res = await fetch(`${mockServer.url}/users/1`);
-        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.name).toBe('Alice');
       });
   });
 });
 ```
 
-### Provider Side
+### Provider Side: Verify Against Published Pacts
 
-- Run provider verification against the published pacts.
-- Use provider states to set up test data: `given('user 1 exists')` triggers a setup hook.
-- Verify in CI on every provider change. Fail the build if a contract breaks.
+```typescript
+import { Verifier } from '@pact-foundation/pact';
 
-### Pact Broker
+new Verifier({
+  providerBaseUrl: 'http://localhost:3000',
+  pactBrokerUrl: 'https://pact-broker.company.com',
+  provider: 'user-api',
+  providerVersion: process.env.GIT_SHA,
+  stateHandlers: {
+    'user 1 exists': async () => {
+      await db.users.create({ id: 1, name: 'Alice' });
+    },
+  },
+}).verifyProvider();
+```
 
-- Self-host or use Pactflow (managed service).
-- Enable the "can-i-deploy" check in CI to prevent deploying incompatible versions.
-- Tag pacts by environment: `main`, `staging`, `production`.
+**BAD:** Testing the provider implementation in isolation without consumer contracts. Changes break consumers silently.
 
-## API Mocking
+**GOOD:** Consumers define expected request/response pairs. Provider CI verifies against all published pacts. Breaking changes fail the build.
 
-### Local Mocking
+### Pact Broker Workflow
 
-- Use MSW (Mock Service Worker) for browser and Node.js API mocking.
-- Intercept at the network level, not the module level. Tests stay close to real behavior.
-- Define handlers once, reuse across unit and integration tests.
+1. Consumer runs tests, publishes pact to broker with `pact-broker publish`.
+2. Provider CI pulls latest pacts with `pact-broker can-i-deploy --to=production`.
+3. If verification passes, deploy. If it fails, coordinate with consumer team before fixing.
+
+## API Mocking Strategies
+
+### MSW for Network-Level Mocking
+
+**BAD:** Mocking fetch at the module level. Tests diverge from production behavior.
+
+```typescript
+jest.mock('node-fetch');
+fetch.mockResolvedValue({ json: () => ({ id: 1 }) });
+```
+
+**GOOD:** Intercept at the network boundary with MSW. Tests hit real HTTP stack.
 
 ```typescript
 import { http, HttpResponse } from 'msw';
@@ -79,58 +92,110 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 ```
 
-### Schema-Based Mocking
+### Schema-Based Mocking with Prism
 
-- Use Prism (from Stoplight) to generate a mock server from an OpenAPI spec.
-- Run: `prism mock openapi.yaml`. It validates requests and returns spec-compliant responses.
-- Use for frontend development when the backend is not ready.
+When the backend is not ready, generate a mock server from the OpenAPI spec.
 
-### Record and Replay
+```bash
+prism mock openapi.yaml --port 4010
+```
 
-- Use Polly.js or VCR to record real API responses and replay them in tests.
-- Store recordings as fixtures. Refresh periodically to catch API drift.
-- Scrub sensitive data from recordings before committing.
+Frontend developers hit `http://localhost:4010` and get spec-compliant responses. Requests that violate the schema return validation errors.
+
+### Record and Replay for Integration Tests
+
+**BAD:** Hitting production APIs in tests. Flaky, slow, couples tests to external availability.
+
+**GOOD:** Record real responses once, replay in tests. Refresh recordings monthly.
+
+```typescript
+import { Polly } from '@pollyjs/core';
+
+const polly = new Polly('user-api', {
+  recordIfMissing: true,
+  adapters: ['fetch'],
+  persister: 'fs',
+});
+
+await fetch('/api/users/1'); // First run records, subsequent runs replay
+```
 
 ## Load Testing with k6
 
-### Basic Test
+### Smoke Test: Verify Endpoint Works
 
 ```javascript
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 
 export const options = {
-  vus: 50,
-  duration: '2m',
-  thresholds: {
-    http_req_duration: ['p(95)<500'],
-    http_req_failed: ['rate<0.01'],
-  },
+  vus: 1,
+  duration: '30s',
 };
 
 export default function () {
   const res = http.get('http://localhost:3000/api/health');
   check(res, { 'status is 200': (r) => r.status === 200 });
+}
+```
+
+### Load Test: Find Baseline Performance
+
+**BAD:** Running load tests without thresholds. No automated pass/fail criteria.
+
+```javascript
+export const options = { vus: 50, duration: '2m' };
+```
+
+**GOOD:** Define SLA thresholds. Fail CI if p95 latency exceeds target.
+
+```javascript
+export const options = {
+  vus: 50,
+  duration: '2m',
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+    http_req_failed: ['rate<0.01'],   // Error rate under 1%
+  },
+};
+
+export default function () {
+  const res = http.get('http://localhost:3000/api/users');
+  check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);
 }
 ```
 
-### Scenarios
+### Stress Test: Find Breaking Point
 
-- **Smoke test:** 1-2 VUs for 30 seconds. Verify the endpoint works.
-- **Load test:** Expected concurrent users for 5-10 minutes. Find the baseline.
-- **Stress test:** Ramp beyond expected load. Find the breaking point.
-- **Soak test:** Sustained load for 1-4 hours. Find memory leaks and connection exhaustion.
+Ramp VUs beyond expected load to find where the system degrades.
+
+```javascript
+export const options = {
+  stages: [
+    { duration: '2m', target: 100 },
+    { duration: '5m', target: 200 },
+    { duration: '2m', target: 300 },
+    { duration: '5m', target: 0 },
+  ],
+};
+```
 
 ### CI Integration
 
-- Run smoke tests on every PR. Run full load tests on a schedule (nightly or weekly).
-- Export results to Grafana Cloud k6 or InfluxDB for trending.
-- Fail the pipeline if p95 latency exceeds the threshold.
+```bash
+# Run smoke test on every PR
+k6 run --quiet smoke.js
+
+# Export results to Grafana Cloud
+k6 run --out cloud load.js
+```
+
+Fail pipeline if thresholds are not met. Store results as build artifacts for trending.
 
 ## Load Testing with Locust
 
-### Basic Test
+### Basic User Behavior
 
 ```python
 from locust import HttpUser, task, between
@@ -138,75 +203,181 @@ from locust import HttpUser, task, between
 class ApiUser(HttpUser):
     wait_time = between(1, 3)
 
-    @task
-    def get_health(self):
-        self.client.get("/api/health")
-
     @task(3)
     def get_users(self):
         self.client.get("/api/users")
+
+    @task(1)
+    def get_user_by_id(self):
+        self.client.get("/api/users/1")
 ```
 
-- Weight tasks with the `@task(n)` decorator. Higher weight means more frequent execution.
-- Run with web UI: `locust -f locustfile.py --host=http://localhost:3000`.
-- Run headless for CI: `locust -f locustfile.py --headless -u 100 -r 10 -t 2m`.
+Weight tasks with `@task(n)`. Higher values mean more frequent execution.
 
-### When to Use Locust vs k6
+### Headless Mode for CI
 
-- k6: better for developers, JavaScript-native, lower resource usage, built-in thresholds.
-- Locust: better for Python teams, more flexible user behavior modeling, web dashboard.
+```bash
+locust -f locustfile.py --headless -u 100 -r 10 -t 2m --host=http://localhost:3000
+```
+
+- `-u 100`: 100 concurrent users
+- `-r 10`: Spawn 10 users per second
+- `-t 2m`: Run for 2 minutes
+
+**When to use Locust vs k6:**
+
+- k6: JavaScript ecosystem, lower resource usage, built-in thresholds
+- Locust: Python ecosystem, web UI, complex user flows
 
 ## OpenAPI Schema Validation
 
-### Request/Response Validation
+### Runtime Validation in Express
 
-- Use `express-openapi-validator` (Node.js) to validate requests and responses against the spec at runtime.
-- Use `openapi-core` (Python) for the same in Flask/Django.
-- Fail requests that do not match the spec in development. Log violations in production.
+**BAD:** Manual request validation. Diverges from spec over time.
+
+```typescript
+app.post('/users', (req, res) => {
+  if (!req.body.name) return res.status(400).send('Missing name');
+});
+```
+
+**GOOD:** Validate against OpenAPI spec at runtime. Spec is the source of truth.
+
+```typescript
+import { OpenApiValidator } from 'express-openapi-validator';
+
+app.use(OpenApiValidator.middleware({
+  apiSpec: './openapi.yaml',
+  validateRequests: true,
+  validateResponses: true,
+}));
+```
+
+Requests that do not match the spec return 400. Responses that do not match log warnings (dev) or errors (production).
 
 ### Test-Time Validation
 
-- After each API test, validate the response against the OpenAPI spec.
-- Use `ajv` with the JSON Schema extracted from the OpenAPI spec.
-- Catch schema drift: if the implementation diverges from the spec, tests fail.
+Validate every test response against the schema. Catch drift immediately.
 
-### Spec Diffing
+```typescript
+import Ajv from 'ajv';
+import schema from './openapi.json';
 
-- Use `oasdiff` to detect breaking changes between spec versions.
-- Run in CI on PRs that modify the spec. Flag breaking changes for review.
-- Categories: breaking (removed endpoint, changed type), non-breaking (added field, new endpoint).
+const ajv = new Ajv();
+const validate = ajv.compile(schema.paths['/users/{id}'].get.responses['200']);
+
+const res = await fetch('/api/users/1');
+const data = await res.json();
+expect(validate(data)).toBe(true);
+```
+
+### Detect Breaking Changes with oasdiff
+
+```bash
+oasdiff changelog openapi-v1.yaml openapi-v2.yaml
+```
+
+Output shows breaking changes (removed endpoint, changed type) vs non-breaking (added optional field).
+
+Run in CI on spec changes. Flag breaking changes for review before merge.
 
 ## Postman/Insomnia Collections
 
 ### Collection Structure
 
-- Organize by resource: Users, Orders, Products. Not by HTTP method.
-- Use folders for CRUD operations within each resource.
-- Include setup and teardown requests (create test data, clean up).
+**BAD:** Organizing by HTTP method (GET folder, POST folder). Hard to find related requests.
 
-### Environment Management
+**GOOD:** Organize by resource. CRUD operations grouped together.
 
-- Define environments: Local, Staging, Production.
-- Use variables for base URL, auth tokens, and test data IDs.
-- Never store real credentials in collections. Use environment variables.
+```
+Users/
+  Create User (POST)
+  Get User (GET)
+  Update User (PUT)
+  Delete User (DELETE)
+Orders/
+  Create Order (POST)
+  List Orders (GET)
+```
 
-### Automation
+### Environment Variables
 
-- Export collections to JSON. Commit to the repo in a `tests/api/` directory.
-- Run Postman collections in CI with Newman: `newman run collection.json -e env.json`.
-- Run Insomnia collections with Inso: `inso run test "Test Suite"`.
-- Generate collections from OpenAPI specs: `openapi-to-postmanv2 -s openapi.yaml -o collection.json`.
+**BAD:** Hardcoding base URL and tokens in requests. Cannot switch environments.
+
+```json
+{
+  "method": "GET",
+  "url": "https://api.production.com/users/1",
+  "headers": { "Authorization": "Bearer abc123" }
+}
+```
+
+**GOOD:** Use environment variables. Switch between local, staging, production with one click.
+
+```json
+{
+  "method": "GET",
+  "url": "{{baseUrl}}/users/{{userId}}",
+  "headers": { "Authorization": "Bearer {{authToken}}" }
+}
+```
+
+### Automation with Newman
+
+Export collections to JSON, commit to repo, run in CI.
+
+```bash
+newman run collection.json -e staging.json --reporters cli,json
+```
+
+Generate collections from OpenAPI specs to stay in sync.
+
+```bash
+openapi2postmanv2 -s openapi.yaml -o collection.json
+```
 
 ## Test Organization
 
-- Separate unit tests (mock everything) from integration tests (real HTTP).
-- Run contract tests independently from load tests. Different cadence, different infra.
-- Tag tests by type: `@smoke`, `@regression`, `@load`. Run subsets in different CI stages.
-- Store test fixtures (request/response pairs) in version control alongside tests.
+**BAD:** Mixing contract tests, integration tests, and load tests in one suite. Different cadences require different runs.
+
+**GOOD:** Separate test suites by type and run on different schedules.
+
+```
+tests/
+  contract/       # Run on every commit
+  integration/    # Run on merge to main
+  load/           # Run nightly
+```
+
+Tag tests for selective execution.
+
+```typescript
+describe('User API', () => {
+  it('returns 200 @smoke', async () => { /* ... */ });
+  it('handles pagination @regression', async () => { /* ... */ });
+});
+```
+
+Run smoke tests on every PR, regression tests on merge.
 
 ## Troubleshooting
 
-- Flaky API tests: add retry logic for network errors, not for assertion failures.
-- Contract verification failing: check provider states setup. Missing state is the most common cause.
-- k6 results inconsistent: ensure the test target is isolated. Shared environments skew results.
-- Mock server not intercepting: check URL patterns. Trailing slashes and query params matter.
+**Flaky API tests:** Add retry logic for network errors, not assertion failures. Use exponential backoff.
+
+```typescript
+const res = await retryOnNetworkError(() => fetch('/api/users'), { maxRetries: 3 });
+```
+
+**Contract verification failing:** Check provider state setup. Missing `stateHandlers` is the most common cause.
+
+**k6 results inconsistent:** Ensure test target is isolated. Shared staging environments skew results. Run against dedicated test instances.
+
+**Mock server not intercepting:** Check URL patterns. MSW matches exact paths. Trailing slashes and query params matter.
+
+```typescript
+// BAD: Does not match /api/users?page=1
+http.get('/api/users', handler);
+
+// GOOD: Matches all query params
+http.get('/api/users', handler);
+```
