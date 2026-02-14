@@ -11,6 +11,12 @@
   },
   "plugins": [
     {
+      "name": "api-testing",
+      "source": "./skills/api-testing",
+      "description": "API testing expertise covering contract testing with Pact, API mocking with MSW and Prism, load testing with k6 and Locust, OpenAPI schema validation, REST and GraphQL test strategies, Postman/Insomnia collections, request chaining, environment management, and CI integration for API test suites.",
+      "version": "1.0.0"
+    },
+    {
       "name": "api-design",
       "source": "./skills/api-design",
       "description": "REST API and GraphQL design best practices including resource naming, HTTP methods, status codes, pagination (cursor vs offset), filtering, error responses (RFC 7807), versioning strategies, OpenAPI specs, authentication (JWT, API keys, OAuth2), rate limiting, HATEOAS, GraphQL schema design, resolvers, N+1 problem, and subscriptions. Use when designing, reviewing, or documenting APIs.",
@@ -26,6 +32,18 @@
       "name": "audio-systems",
       "source": "./skills/audio-systems",
       "description": "Game audio systems, music, spatial audio, sound effects, and voice implementation. Build immersive audio experiences with professional middleware integration.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "container-security",
+      "source": "./skills/container-security",
+      "description": "Container security best practices including image scanning with Trivy and Grype, minimal base images, rootless containers, secrets management in containers, supply chain security with Cosign and SBOM generation, Dockerfile hardening, runtime security policies, and container registry security.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "cost-optimization",
+      "source": "./skills/cost-optimization",
+      "description": "Cloud and infrastructure cost optimization covering container right-sizing, CDN caching strategies, database query cost analysis, serverless function cold start reduction, reserved vs spot instance strategies, storage tiering, bandwidth optimization, and cost monitoring with alerts.",
       "version": "1.0.0"
     },
     {
@@ -59,9 +77,27 @@
       "version": "1.0.0"
     },
     {
+      "name": "dependency-audit",
+      "source": "./skills/dependency-audit",
+      "description": "Dependency auditing and management covering npm audit, go mod tidy, pip-audit, license compliance with SPDX identifiers, lockfile hygiene, Dependabot and Renovate configuration, vulnerability triage, transitive dependency analysis, and supply chain security best practices.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "doc-generation",
+      "source": "./skills/doc-generation",
+      "description": "Documentation generation from code including OpenAPI and GraphQL schema docs, architecture diagrams with Mermaid and C4 model, README generation, changelog automation with conventional commits, JSDoc and GoDoc patterns, Storybook for component docs, and documentation CI pipelines.",
+      "version": "1.0.0"
+    },
+    {
       "name": "daw-music",
       "source": "./skills/daw-music",
       "description": "Digital Audio Workstation usage, music composition, interactive music systems, and game audio implementation for immersive soundscapes.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "env-config",
+      "source": "./skills/env-config",
+      "description": "Environment configuration patterns covering .env file management, environment variable validation with Zod and envalid, secret management strategies, 12-factor app configuration, Docker env injection, config hierarchies, and secure defaults for development and production environments.",
       "version": "1.0.0"
     },
     {
@@ -137,6 +173,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "git-workflow",
+      "source": "./skills/git-workflow",
+      "description": "Git workflow expertise covering conventional commits, branch strategies (GitFlow, trunk-based, GitHub Flow), rebase and merge conflict resolution, git hooks with Husky and lint-staged, monorepo patterns, interactive rebase, cherry-pick workflows, and git bisect for debugging.",
+      "version": "1.0.0"
+    },
+    {
       "name": "go-linter-configuration",
       "source": "./skills/go-linter-configuration",
       "description": "Configure and troubleshoot golangci-lint for Go projects. Handle import resolution issues, type-checking problems, and optimize configurations for both local and CI environments.",
@@ -149,9 +191,21 @@
       "version": "1.0.1"
     },
     {
+      "name": "incident-response",
+      "source": "./skills/incident-response",
+      "description": "Incident response procedures covering on-call runbooks, postmortem templates, status page management, rollback procedures, communication protocols, severity classification, escalation paths, blameless retrospectives, and chaos engineering practices for resilience testing.",
+      "version": "1.0.0"
+    },
+    {
       "name": "graphics-rendering",
       "source": "./skills/graphics-rendering",
       "description": "3D graphics, shaders, VFX, lighting, rendering optimization. Create stunning visuals with production-ready techniques.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "local-security",
+      "source": "./skills/local-security",
+      "description": "Developer workstation security covering SSH key management, GPG commit signing, credential managers, file permissions, agent forwarding security, multi-IDE security practices, browser extension auditing, disk encryption, and secure development environment setup.",
       "version": "1.0.0"
     },
     {
@@ -219,6 +273,12 @@
       "source": "./skills/project-migration",
       "description": "Migrate project folders while preserving Claude Code session data. Use when moving, renaming, or reorganizing project directories. Handles path encoding, data migration, history.jsonl updates, and orphan cleanup.",
       "version": "1.0.1"
+    },
+    {
+      "name": "refactoring-patterns",
+      "source": "./skills/refactoring-patterns",
+      "description": "Code refactoring patterns including extract method and class, inline refactoring, move and rename, dead code elimination, dependency injection, SOLID principles applied, strangler fig pattern, feature flags for safe refactoring, and IDE-assisted refactoring workflows.",
+      "version": "1.0.0"
     },
     {
       "name": "publishing-platforms",
