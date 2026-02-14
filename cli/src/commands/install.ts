@@ -6,9 +6,11 @@ import { loadConfig } from "../utils/config.js";
 
 export async function installCommand(
   skillName: string | undefined,
-  opts: { provider?: string; all?: boolean; dryRun?: boolean }
+  opts: { provider?: string; all?: boolean; dryRun?: boolean; json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts.json) {
+    banner();
+  }
 
   if (!skillName && !opts.all) {
     console.log(ui.error("  Specify a skill name or use --all"));
@@ -22,26 +24,30 @@ export async function installCommand(
   const providers = opts.all ? getProviders() : [getProvider(providerName)];
 
   if (opts.all) {
-    await installAll(providers, opts.dryRun);
+    await installAll(providers, opts.dryRun, opts.json);
   } else {
-    await installOne(skillName!, providers[0]!, opts.dryRun);
+    await installOne(skillName!, providers[0]!, opts.dryRun, opts.json);
   }
 }
 
-async function installOne(skillName: string, provider: Provider, dryRun?: boolean): Promise<void> {
-  if (!dryRun && isSkillInstalled(skillName)) {
+async function installOne(skillName: string, provider: Provider, dryRun?: boolean, json?: boolean): Promise<void> {
+  if (!dryRun && !json && isSkillInstalled(skillName)) {
     console.log(ui.warn(`  ${skillName} is already installed. Reinstalling...`));
   }
 
-  const s = spinner(`Fetching ${ui.bold(skillName)} from ${ui.dim(provider.name)}...`);
+  const s = json ? { start: () => {}, succeed: () => {}, fail: () => {}, text: "" } : spinner(`Fetching ${ui.bold(skillName)} from ${ui.dim(provider.name)}...`);
   s.start();
 
   try {
     const files = await provider.fetch(skillName);
 
     if (dryRun) {
-      s.succeed(`Would install ${ui.bold(skillName)} (${files.length} files)`);
-      console.log();
+      if (json) {
+        console.log(JSON.stringify({ installed: [], skipped: [], failed: [] }));
+      } else {
+        s.succeed(`Would install ${ui.bold(skillName)} (${files.length} files)`);
+        console.log();
+      }
       return;
     }
 
@@ -51,19 +57,27 @@ async function installOne(skillName: string, provider: Provider, dryRun?: boolea
     const remote = await provider.info(skillName);
     writeSkillMeta(skillName, { version: remote?.version ?? "0.0.0", installedAt: new Date().toISOString(), source: provider.name });
 
-    s.succeed(`Installed ${ui.bold(skillName)} (${files.length} files)`);
-    console.log(ui.dim(`  Location: ${dir}`));
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ installed: [skillName], skipped: [], failed: [] }));
+    } else {
+      s.succeed(`Installed ${ui.bold(skillName)} (${files.length} files)`);
+      console.log(ui.dim(`  Location: ${dir}`));
+      console.log();
+    }
   } catch (err) {
-    s.fail(`Failed to install ${skillName}`);
-    printErrorWithHint(err, true);
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ installed: [], skipped: [], failed: [skillName] }));
+    } else {
+      s.fail(`Failed to install ${skillName}`);
+      printErrorWithHint(err, true);
+      console.log();
+    }
     process.exit(1);
   }
 }
 
-async function installAll(providers: Provider[], dryRun?: boolean): Promise<void> {
-  const s = spinner("Fetching skill list...");
+async function installAll(providers: Provider[], dryRun?: boolean, json?: boolean): Promise<void> {
+  const s = json ? { start: () => {}, succeed: () => {}, fail: () => {}, text: "" } : spinner("Fetching skill list...");
   s.start();
 
   if (dryRun) {
@@ -73,25 +87,28 @@ async function installAll(providers: Provider[], dryRun?: boolean): Promise<void
         const skills = await provider.list();
         total += skills.length;
       } catch (err) {
-        if (err instanceof Error) console.error(ui.dim(`  Failed to list ${provider.name}: ${err.message}`));
+        if (err instanceof Error && !json) console.error(ui.dim(`  Failed to list ${provider.name}: ${err.message}`));
       }
     }
-    s.succeed(`Would install ${total} skills`);
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ installed: [], skipped: [], failed: [] }));
+    } else {
+      s.succeed(`Would install ${total} skills`);
+      console.log();
+    }
     return;
   }
 
-  let installed = 0;
-  let skipped = 0;
-  let failed = 0;
+  const installedList: string[] = [];
+  const skippedList: string[] = [];
+  const failedList: string[] = [];
 
   for (const provider of providers) {
     let skills;
     try {
       skills = await provider.list();
     } catch (err) {
-      failed++;
-      if (err instanceof Error) console.error(ui.dim(`  Failed to list ${provider.name}: ${err.message}`));
+      if (err instanceof Error && !json) console.error(ui.dim(`  Failed to list ${provider.name}: ${err.message}`));
       continue;
     }
 
@@ -99,7 +116,7 @@ async function installAll(providers: Provider[], dryRun?: boolean): Promise<void
     for (let i = 0; i < total; i++) {
       const skill = skills[i]!;
       if (isSkillInstalled(skill.name)) {
-        skipped++;
+        skippedList.push(skill.name);
         continue;
       }
       try {
@@ -107,18 +124,22 @@ async function installAll(providers: Provider[], dryRun?: boolean): Promise<void
         const files = await provider.fetch(skill.name);
         installSkill(skill.name, files);
         writeSkillMeta(skill.name, { version: skill.version, installedAt: new Date().toISOString(), source: provider.name });
-        installed++;
+        installedList.push(skill.name);
       } catch (err) {
-        failed++;
-        if (err instanceof Error) console.error(ui.dim(`  Failed to install ${skill.name}: ${err.message}`));
+        failedList.push(skill.name);
+        if (err instanceof Error && !json) console.error(ui.dim(`  Failed to install ${skill.name}: ${err.message}`));
       }
     }
   }
 
-  s.succeed(`Installed ${installed} skills${failed > 0 ? `, ${failed} failed` : ""}`);
-  if (skipped > 0) {
-    console.log(ui.dim(`  Skipped ${skipped} already installed`));
+  if (json) {
+    console.log(JSON.stringify({ installed: installedList, skipped: skippedList, failed: failedList }));
+  } else {
+    s.succeed(`Installed ${installedList.length} skills${failedList.length > 0 ? `, ${failedList.length} failed` : ""}`);
+    if (skippedList.length > 0) {
+      console.log(ui.dim(`  Skipped ${skippedList.length} already installed`));
+    }
+    console.log();
   }
-  console.log();
-  if (failed > 0) process.exit(1);
+  if (failedList.length > 0) process.exit(1);
 }

@@ -11,7 +11,7 @@ interface AuditResult {
   checks: { name: string; passed: boolean; detail?: string }[];
 }
 
-function auditSkill(skillDir: string, skillName: string): AuditResult {
+export function auditSkill(skillDir: string, skillName: string): AuditResult {
   const checks: AuditResult["checks"] = [];
   let score = 0;
 

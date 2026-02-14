@@ -216,4 +216,25 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
   }
   if (skipped > 0) console.log(ui.dim(`  ${skipped} skipped (already exist)`));
   console.log();
+
+  // Skill suggestions based on project type
+  const SKILL_SUGGESTIONS: Record<string, string[]> = {
+    "Go": ["golang-pro", "go-linter-configuration", "testing-strategy", "security-review"],
+    "Rust": ["rust-best-practices", "testing-strategy", "security-review"],
+    "Python": ["python-best-practices", "testing-strategy", "security-review"],
+    "Next.js": ["typescript", "typescript-advanced", "frontend-design", "performance-optimization", "security-review"],
+    "React": ["typescript", "frontend-design", "frontend-code-review", "testing-strategy"],
+    "Node.js": ["typescript", "npm-package", "testing-strategy", "security-review"],
+  };
+
+  const suggestions = SKILL_SUGGESTIONS[proj.type] || ["code-reviewer", "security-review", "codebase-dissection", "testing-strategy"];
+
+  console.log(ui.bold("  Recommended skills"));
+  console.log();
+  for (const skill of suggestions) {
+    console.log(`  ${ui.cyan("arcana install " + skill)}`);
+  }
+  console.log();
+  console.log(ui.dim("  Or install all: arcana install --all"));
+  console.log();
 }

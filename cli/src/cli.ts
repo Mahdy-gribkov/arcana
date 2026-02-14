@@ -43,12 +43,14 @@ export function createCli(): Command {
     .option("-p, --provider <name>", "Provider to install from")
     .option("-a, --all", "Install all skills")
     .option("--dry-run", "Show what would be installed without installing")
+    .option("-j, --json", "Output as JSON")
     .action((skill, opts) => installCommand(skill, opts));
 
   program
     .command("info <skill>")
     .description("Show skill details")
     .option("-p, --provider <name>", "Provider to search")
+    .option("-j, --json", "Output as JSON")
     .action((skill, opts) => infoCommand(skill, opts));
 
   program
@@ -84,12 +86,14 @@ export function createCli(): Command {
     .description("Update installed skills")
     .option("-a, --all", "Update all installed skills")
     .option("-p, --provider <name>", "Update from specific provider")
+    .option("-j, --json", "Output as JSON")
     .action((skill, opts) => updateCommand(skill, opts));
 
   program
     .command("uninstall <skill>")
     .description("Uninstall a skill")
     .option("-y, --yes", "Skip confirmation prompt")
+    .option("-j, --json", "Output as JSON")
     .action((skill, opts) => uninstallCommand(skill, opts));
 
   program
@@ -119,7 +123,8 @@ export function createCli(): Command {
   program
     .command("config [action] [value]")
     .description("View or modify arcana configuration")
-    .action((action, value) => configCommand(action, value));
+    .option("-j, --json", "Output as JSON")
+    .action((action, value, opts) => configCommand(action, value, opts));
 
   program
     .command("audit [skill]")

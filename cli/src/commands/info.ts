@@ -4,9 +4,11 @@ import { getProviders } from "../registry.js";
 
 export async function infoCommand(
   skillName: string,
-  opts: { provider?: string }
+  opts: { provider?: string; json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts.json) {
+    banner();
+  }
 
   const providers = getProviders(opts.provider);
   const s = spinner(`Looking up ${ui.bold(skillName)}...`);
@@ -18,6 +20,20 @@ export async function infoCommand(
       if (skill) {
         s.stop();
         const installed = isSkillInstalled(skillName);
+
+        if (opts.json) {
+          console.log(JSON.stringify({
+            skill: {
+              name: skill.name,
+              description: skill.description,
+              version: skill.version,
+              installed,
+              source: skill.source,
+              repo: skill.repo,
+            }
+          }));
+          return;
+        }
 
         console.log(ui.bold(`  ${skill.name}`) + ui.dim(` v${skill.version}`));
         if (installed) {

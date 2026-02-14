@@ -7,19 +7,25 @@ import { ui, banner } from "../utils/ui.js";
 
 export async function uninstallCommand(
   skillName: string,
-  opts: { yes?: boolean } = {}
+  opts: { yes?: boolean; json?: boolean } = {}
 ): Promise<void> {
-  banner();
+  if (!opts.json) {
+    banner();
+  }
 
   const skillDir = getSkillDir(skillName);
 
   if (!existsSync(skillDir)) {
-    console.log(ui.error(`  Skill "${skillName}" is not installed.`));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ uninstalled: skillName, success: false }));
+    } else {
+      console.log(ui.error(`  Skill "${skillName}" is not installed.`));
+      console.log();
+    }
     process.exit(1);
   }
 
-  if (!opts.yes) {
+  if (!opts.yes && !opts.json) {
     const rl = createInterface({ input: stdin, output: stdout });
     let answer: string;
     try {
@@ -49,13 +55,19 @@ export async function uninstallCommand(
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.log(ui.warn(`  Could not remove symlink ${link.name}: ${msg}`));
+      if (!opts.json) {
+        console.log(ui.warn(`  Could not remove symlink ${link.name}: ${msg}`));
+      }
     }
   }
 
-  console.log(ui.success(`  Uninstalled ${ui.bold(skillName)}`));
-  if (symlinksRemoved > 0) {
-    console.log(ui.dim(`  Removed ${symlinksRemoved} symlink${symlinksRemoved > 1 ? "s" : ""}`));
+  if (opts.json) {
+    console.log(JSON.stringify({ uninstalled: skillName, success: true }));
+  } else {
+    console.log(ui.success(`  Uninstalled ${ui.bold(skillName)}`));
+    if (symlinksRemoved > 0) {
+      console.log(ui.dim(`  Removed ${symlinksRemoved} symlink${symlinksRemoved > 1 ? "s" : ""}`));
+    }
+    console.log();
   }
-  console.log();
 }

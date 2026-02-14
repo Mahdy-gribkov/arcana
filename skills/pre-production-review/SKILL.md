@@ -284,3 +284,7 @@ GOOD: Dispatch 8 parallel sub-agents, each with its own context. Collect JSON re
 | `scripts/scan-security.sh` | Find common vulnerabilities | `bash scripts/scan-security.sh .` |
 | `scripts/scan-quality.sh` | Count quality issues | `bash scripts/scan-quality.sh .` |
 | `scripts/health-score.sh` | Calculate health score | `bash scripts/health-score.sh findings.json` |
+
+## Credits
+
+8-domain analysis methodology inspired by [UCOF](https://github.com/nativardi/ucof) by [@nativardi](https://github.com/nativardi).

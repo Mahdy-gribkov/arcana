@@ -10,13 +10,22 @@ type ConfigKey = (typeof VALID_KEYS)[number];
 
 export async function configCommand(
   action: string | undefined,
-  value: string | undefined
+  value: string | undefined,
+  opts?: { json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts?.json) {
+    banner();
+  }
 
   // arcana config list (or no args)
   if (!action || action === "list") {
     const config = loadConfig();
+
+    if (opts?.json) {
+      console.log(JSON.stringify({ config }));
+      return;
+    }
+
     console.log(ui.bold("  Configuration\n"));
     const envInstallDir = process.env.ARCANA_INSTALL_DIR;
     const envProvider = process.env.ARCANA_DEFAULT_PROVIDER;

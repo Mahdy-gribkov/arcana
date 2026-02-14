@@ -13,17 +13,35 @@ name: ${name}
 description: ${description}
 ---
 
-# ${name}
+## Overview
 
 ${description}
 
-## Usage
+## Workflow
 
-Describe how to use this skill.
+<!-- Step-by-step instructions for the agent -->
 
-## Instructions
+1. Step one
+2. Step two
+3. Step three
 
-Add your skill instructions here.
+## Examples
+
+\`\`\`typescript
+// BAD: Description of anti-pattern
+const bad = "example";
+
+// GOOD: Description of correct approach
+const good = "example";
+\`\`\`
+
+## Anti-patterns
+
+<!-- List common mistakes with BAD/GOOD pairs -->
+
+## References
+
+See \`references/\` for detailed documentation.
 `;
 }
 
@@ -72,6 +90,14 @@ export async function createCommand(name: string): Promise<void> {
 
   mkdirSync(skillDir, { recursive: true });
   atomicWriteSync(join(skillDir, "SKILL.md"), generateSkillMd(name, description));
+
+  // Create empty directories with .gitkeep files
+  const scriptsDir = join(skillDir, "scripts");
+  const referencesDir = join(skillDir, "references");
+  mkdirSync(scriptsDir, { recursive: true });
+  mkdirSync(referencesDir, { recursive: true });
+  atomicWriteSync(join(scriptsDir, ".gitkeep"), "");
+  atomicWriteSync(join(referencesDir, ".gitkeep"), "");
 
   console.log();
   console.log(ui.success(`  Created skill: ${ui.bold(name)}`));

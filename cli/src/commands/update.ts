@@ -7,9 +7,11 @@ import { loadConfig } from "../utils/config.js";
 
 export async function updateCommand(
   skill: string | undefined,
-  opts: { all?: boolean; provider?: string }
+  opts: { all?: boolean; provider?: string; json?: boolean }
 ): Promise<void> {
-  banner();
+  if (!opts.json) {
+    banner();
+  }
 
   if (!skill && !opts.all) {
     console.log(ui.error("  Specify a skill name or use --all"));
@@ -29,25 +31,30 @@ export async function updateCommand(
   const providerName = opts.provider ?? loadConfig().defaultProvider;
 
   if (opts.all) {
-    await updateAll(installDir, providerName);
+    await updateAll(installDir, providerName, opts.json);
   } else {
-    await updateOne(skill!, installDir, providerName);
+    await updateOne(skill!, installDir, providerName, opts.json);
   }
 }
 
 async function updateOne(
   skillName: string,
   installDir: string,
-  providerName: string
+  providerName: string,
+  json?: boolean
 ): Promise<void> {
   const skillDir = join(installDir, skillName);
   if (!existsSync(skillDir)) {
-    console.log(ui.error(`  Skill "${skillName}" is not installed.`));
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ updated: [], upToDate: [], failed: [skillName] }));
+    } else {
+      console.log(ui.error(`  Skill "${skillName}" is not installed.`));
+      console.log();
+    }
     process.exit(1);
   }
 
-  const s = spinner(`Checking ${ui.bold(skillName)} for updates...`);
+  const s = json ? { start: () => {}, succeed: () => {}, info: () => {}, fail: () => {}, text: "" } : spinner(`Checking ${ui.bold(skillName)} for updates...`);
   s.start();
 
   try {
@@ -55,15 +62,23 @@ async function updateOne(
     const remote = await provider.info(skillName);
 
     if (!remote) {
-      s.fail(`Skill "${skillName}" not found on ${providerName}`);
-      console.log();
+      if (json) {
+        console.log(JSON.stringify({ updated: [], upToDate: [], failed: [skillName] }));
+      } else {
+        s.fail(`Skill "${skillName}" not found on ${providerName}`);
+        console.log();
+      }
       process.exit(1);
     }
 
     const meta = readSkillMeta(skillName);
     if (meta?.version === remote.version) {
-      s.info(`${ui.bold(skillName)} is already up to date (v${remote.version})`);
-      console.log();
+      if (json) {
+        console.log(JSON.stringify({ updated: [], upToDate: [skillName], failed: [] }));
+      } else {
+        s.info(`${ui.bold(skillName)} is already up to date (v${remote.version})`);
+        console.log();
+      }
       return;
     }
 
@@ -72,34 +87,45 @@ async function updateOne(
     installSkill(skillName, files);
     writeSkillMeta(skillName, { version: remote.version, installedAt: new Date().toISOString(), source: providerName });
 
-    s.succeed(`Updated ${ui.bold(skillName)} to v${remote.version} (${files.length} files)`);
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ updated: [skillName], upToDate: [], failed: [] }));
+    } else {
+      s.succeed(`Updated ${ui.bold(skillName)} to v${remote.version} (${files.length} files)`);
+      console.log();
+    }
   } catch (err) {
-    s.fail(`Failed to update ${skillName}`);
-    if (err instanceof Error) console.error(ui.dim(`  ${err.message}`));
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ updated: [], upToDate: [], failed: [skillName] }));
+    } else {
+      s.fail(`Failed to update ${skillName}`);
+      if (err instanceof Error) console.error(ui.dim(`  ${err.message}`));
+      console.log();
+    }
     process.exit(1);
   }
 }
 
-async function updateAll(installDir: string, providerName: string): Promise<void> {
+async function updateAll(installDir: string, providerName: string, json?: boolean): Promise<void> {
   const installed = readdirSync(installDir).filter(
     (d) => statSync(join(installDir, d)).isDirectory()
   );
 
   if (installed.length === 0) {
-    console.log(ui.dim("  No skills installed."));
-    console.log();
+    if (json) {
+      console.log(JSON.stringify({ updated: [], upToDate: [], failed: [] }));
+    } else {
+      console.log(ui.dim("  No skills installed."));
+      console.log();
+    }
     return;
   }
 
-  const s = spinner(`Checking ${installed.length} skills for updates...`);
+  const s = json ? { start: () => {}, succeed: () => {}, text: "" } : spinner(`Checking ${installed.length} skills for updates...`);
   s.start();
 
-  let updated = 0;
-  let upToDate = 0;
-  let notFound = 0;
-  let errors = 0;
+  const updatedList: string[] = [];
+  const upToDateList: string[] = [];
+  const failedList: string[] = [];
 
   const providers = getProviders(providerName === "arcana" ? undefined : providerName);
 
@@ -116,7 +142,7 @@ async function updateAll(installDir: string, providerName: string): Promise<void
 
         const meta = readSkillMeta(skillName);
         if (meta?.version === remote.version) {
-          upToDate++;
+          upToDateList.push(skillName);
           break;
         }
 
@@ -124,20 +150,24 @@ async function updateAll(installDir: string, providerName: string): Promise<void
         const files = await provider.fetch(skillName);
         installSkill(skillName, files);
         writeSkillMeta(skillName, { version: remote.version, installedAt: new Date().toISOString(), source: provider.name });
-        updated++;
+        updatedList.push(skillName);
         break;
       }
     } catch (err) {
-      errors++;
-      if (err instanceof Error) console.error(ui.dim(`  Failed to update ${skillName}: ${err.message}`));
+      failedList.push(skillName);
+      if (err instanceof Error && !json) console.error(ui.dim(`  Failed to update ${skillName}: ${err.message}`));
       continue;
     }
 
-    if (!found) notFound++;
+    if (!found) failedList.push(skillName);
   }
 
-  s.succeed(`Update complete`);
-  console.log(ui.dim(`  ${updated} updated, ${upToDate} up to date, ${notFound} not in provider${errors > 0 ? `, ${errors} failed` : ""}`));
-  console.log();
-  if (errors > 0) process.exit(1);
+  if (json) {
+    console.log(JSON.stringify({ updated: updatedList, upToDate: upToDateList, failed: failedList }));
+  } else {
+    s.succeed(`Update complete`);
+    console.log(ui.dim(`  ${updatedList.length} updated, ${upToDateList.length} up to date${failedList.length > 0 ? `, ${failedList.length} failed` : ""}`));
+    console.log();
+  }
+  if (failedList.length > 0) process.exit(1);
 }
