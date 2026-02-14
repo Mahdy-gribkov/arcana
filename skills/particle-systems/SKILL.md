@@ -288,6 +288,9 @@ OPTIMIZATION TECHNIQUES:
 ┌─────────────────────────────────────────────────────────────┐
 │  REDUCE COUNT:                                               │
 │  • LOD system (fewer particles at distance)                 │
+│    - Far: 25% particle count (50+ units away)               │
+│    - Medium: 50% particle count (20-50 units)               │
+│    - Near: 100% particle count (<20 units)                  │
 │  • Cull off-screen emitters                                 │
 │  • Limit max particles per system                           │
 │                                                              │

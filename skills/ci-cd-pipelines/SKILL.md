@@ -352,6 +352,59 @@ Key GitLab differences from GitHub Actions:
 - `artifacts` pass files between stages (GitHub uses `actions/upload-artifact`).
 - `services` for Docker-in-Docker (GitHub uses `docker/setup-buildx-action`).
 
+## Artifact Caching Gotchas
+
+GitHub Actions cache has a 10GB limit per repo. When the cache fills up, older entries are evicted. Common issues:
+
+- **Cache thrashing**: Too many unique cache keys (e.g., using `${{ github.sha }}` as key). Use stable keys like `${{ hashFiles('**/package-lock.json') }}`.
+- **Never-hit cache**: Key changes on every run. Use `restore-keys` for fallback.
+- **Stale dependencies**: Cache never invalidates. Include dependency file hash in the key.
+
+```yaml
+# BAD: Cache key changes on every commit (never hits)
+- uses: actions/cache@v4
+  with:
+    key: deps-${{ github.sha }}
+
+# GOOD: Stable key based on lockfile, with fallback
+- uses: actions/cache@v4
+  with:
+    key: deps-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+    restore-keys: deps-${{ runner.os }}-
+```
+
+## Job Matrix Strategy Example
+
+```yaml
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20, 22]
+        include:
+          # Add extra config for specific combinations
+          - os: ubuntu-latest
+            node: 22
+            coverage: true
+        exclude:
+          # Skip expensive combinations
+          - os: macos-latest
+            node: 18
+          - os: windows-latest
+            node: 18
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: pnpm test
+      - if: matrix.coverage
+        run: pnpm test --coverage
+        # Upload coverage only for one matrix combination
+```
+
 ## CI Performance Rules
 
 1. **Parallelize everything**: lint, test, typecheck, build as separate jobs. They don't depend on each other.

@@ -305,3 +305,97 @@ run(process.argv.slice(2));
 ```
 
 Ensure the built file has the shebang. tsup preserves it if your source has it. Add `banner: { js: "#!/usr/bin/env node" }` in tsup config if needed.
+
+## Wrong Exports Edge Case: ESM/CJS Mismatch Debugging
+
+```
+SYMPTOM: "Cannot find module" or "ERR_REQUIRE_ESM" in consumers
+```
+
+### Diagnosis Checklist
+
+```bash
+# 1. Verify package contents
+npx publint              # Catches exports issues
+npx arethetypeswrong     # Tests TypeScript types across formats
+
+# 2. Check what Node.js resolves
+node -p "require.resolve('@scope/my-lib')"           # CJS resolution
+node --input-type=module -e "import('@scope/my-lib')" # ESM resolution
+
+# 3. Inspect actual exports in published package
+npm pack --dry-run
+tar -tzf *.tgz | grep dist/
+```
+
+### Common Mismatches
+
+```jsonc
+// ❌ BAD: Exports mismatch with actual files
+{
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",   // File exists
+      "require": "./dist/index.cjs"  // ❌ File missing or wrong extension
+    }
+  }
+}
+
+// ✅ GOOD: Match tsup output exactly
+// tsup outputs: index.js (ESM), index.cjs (CJS)
+{
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    }
+  }
+}
+```
+
+### Fix: ESM-only package causing CJS errors
+
+If your package is ESM-only and consumers using `require()` fail:
+
+```jsonc
+{
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+      // No "require" field = CJS consumers get clear error
+    }
+  }
+}
+```
+
+Document in README: "This is an ESM-only package. Use `import` not `require`."
+
+### Fix: Dual package hazard
+
+```javascript
+// ❌ HAZARD: Same code loaded twice if not careful
+// app.mjs:  import { state } from 'my-lib'
+// app.cjs:  const { state } = require('my-lib')
+// Result: Two separate instances of `state`
+```
+
+Solution: Document that mixing ESM/CJS in the same app can cause state duplication. Recommend consumers stick to one format project-wide.
+
+### Testing Both Formats Locally
+
+```bash
+# Create test CJS consumer
+mkdir test-cjs && cd test-cjs
+npm init -y
+npm install ../my-package
+node -e "const x = require('@scope/my-lib'); console.log(x)"
+
+# Create test ESM consumer
+mkdir test-esm && cd test-esm
+npm init -y && echo '{"type":"module"}' > package.json
+npm install ../my-package
+node -e "import('@scope/my-lib').then(x => console.log(x))"
+```

@@ -258,6 +258,90 @@ TEACHING THROUGH DESIGN:
 | Secrets | 2-3 | 1-2 | 5-10 | 3-5 |
 | Checkpoints | Every 2 min | Puzzle start | Safe rooms | Every 30 sec |
 
+## Procedural Generation with Seeds
+
+```gdscript
+# ✅ Production-Ready: Noise-Based Level Generator
+extends Node2D
+
+@export var seed_value: int = 12345
+@export var grid_size: Vector2i = Vector2i(50, 50)
+@export var wall_threshold: float = 0.3
+
+var noise: FastNoiseLite
+
+func _ready() -> void:
+    generate_level(seed_value)
+
+func generate_level(level_seed: int) -> void:
+    # Initialize noise with seed
+    noise = FastNoiseLite.new()
+    noise.seed = level_seed
+    noise.noise_type = FastNoiseLite.TYPE_PERLIN
+    noise.frequency = 0.05
+
+    # Generate tilemap
+    for x in range(grid_size.x):
+        for y in range(grid_size.y):
+            var noise_value = noise.get_noise_2d(x, y)
+
+            # Map noise to tile types
+            if noise_value < -wall_threshold:
+                place_tile(x, y, "wall")
+            elif noise_value > wall_threshold:
+                place_tile(x, y, "water")
+            else:
+                place_tile(x, y, "floor")
+
+                # Spawn entities on floor tiles
+                if noise_value > 0.2 and randf() < 0.05:
+                    spawn_enemy(Vector2(x, y))
+
+func place_tile(x: int, y: int, type: String) -> void:
+    # Implementation depends on your tilemap setup
+    pass
+
+func spawn_enemy(pos: Vector2) -> void:
+    # Spawn enemy at position
+    pass
+```
+
+```csharp
+// Unity: Perlin noise dungeon generator
+public class ProceduralDungeon : MonoBehaviour
+{
+    [SerializeField] private int seed = 12345;
+    [SerializeField] private Vector2Int gridSize = new(50, 50);
+    [SerializeField] private float scale = 0.1f;
+
+    void Start()
+    {
+        GenerateDungeon(seed);
+    }
+
+    void GenerateDungeon(int dungeonSeed)
+    {
+        Random.InitState(dungeonSeed);
+
+        for (int x = 0; x < gridSize.x; x++)
+        {
+            for (int y = 0; y < gridSize.y; y++)
+            {
+                // Perlin noise returns 0-1
+                float noiseValue = Mathf.PerlinNoise(x * scale, y * scale);
+
+                if (noiseValue < 0.3f)
+                    PlaceTile(x, y, TileType.Wall);
+                else if (noiseValue < 0.7f)
+                    PlaceTile(x, y, TileType.Floor);
+                else
+                    PlaceTile(x, y, TileType.Treasure);
+            }
+        }
+    }
+}
+```
+
 ---
 
 **Use this skill**: When designing engaging levels, pacing gameplay, or creating environmental narratives.

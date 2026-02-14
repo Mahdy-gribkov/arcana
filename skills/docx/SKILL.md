@@ -74,6 +74,8 @@ After creating the file, validate it. If validation fails, unpack, fix the XML, 
 python scripts/office/validate.py doc.docx
 ```
 
+**Note on python-docx 1.x:** The `docx` package (used for creating documents) and `python-docx` library refer to the same package. Install with `pip install python-docx`. The library has been stable at 1.x for years. All XML examples in this document are compatible with python-docx 1.1.0+.
+
 ### Page Size
 
 ```javascript

@@ -340,6 +340,14 @@ OPTIMIZATION TECHNIQUES:
 │  • Minimize shader keywords                                 │
 │  • Use multi_compile_local                                  │
 │  • Strip unused variants                                    │
+├─────────────────────────────────────────────────────────────┤
+│  MOBILE GPU OPTIMIZATION GOTCHAS:                            │
+│  • Use mediump (half) everywhere: colors, UVs, normals      │
+│  • Max 8 texture samplers per shader (some GPUs)            │
+│  • Avoid discard/clip (kills early-z optimization)          │
+│  • PowerVR (iPhone): avoid dependent texture reads          │
+│  • Adreno (Android): limit ALU in fragment shader           │
+│  • Mali (Android): avoid complex branching                  │
 └─────────────────────────────────────────────────────────────┘
 
 COST COMPARISON (Relative):

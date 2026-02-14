@@ -136,6 +136,62 @@ public class PlayerSession
 }
 ```
 
+## WebSocket Reconnection Pattern
+
+```typescript
+// ✅ Production-Ready: WebSocket with exponential backoff
+class GameWebSocket {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectDelay = 30000; // 30 seconds max
+  private baseDelay = 1000; // Start at 1 second
+
+  connect(url: string) {
+    this.ws = new WebSocket(url);
+
+    this.ws.onopen = () => {
+      console.log("Connected to game server");
+      this.reconnectAttempts = 0; // Reset on success
+    };
+
+    this.ws.onclose = (event) => {
+      if (event.code === 1000) return; // Normal closure
+      this.scheduleReconnect(url);
+    };
+
+    this.ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+  }
+
+  private scheduleReconnect(url: string) {
+    // Exponential backoff: delay = baseDelay * 2^attempts + jitter
+    const delay = Math.min(
+      this.baseDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+
+    // Add jitter (±20% randomness to prevent thundering herd)
+    const jitter = delay * 0.2 * (Math.random() - 0.5);
+    const reconnectDelay = delay + jitter;
+
+    console.log(`Reconnecting in ${reconnectDelay}ms (attempt ${this.reconnectAttempts + 1})`);
+
+    setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect(url);
+    }, reconnectDelay);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close(1000, "Client disconnect");
+      this.ws = null;
+    }
+  }
+}
+```
+
 ## Auto-Scaling Strategy
 
 ```

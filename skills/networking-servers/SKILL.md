@@ -91,6 +91,8 @@ public class NetworkedMovement : NetworkBehaviour
 
 ### Lag Compensation
 
+Lag compensation reconciles the time difference between what a player sees on their screen and the server's authoritative state. When a player shoots at a moving target, they're aiming at where the target was 50-100ms ago due to network latency. Without compensation, fast-paced shooters would feel unfair because players have to "lead" their shots unnaturally. The server rewinds the game state to match the shooter's perspective at the time they fired, validates the hit at that past moment, then applies the result to the present.
+
 ```csharp
 // ✅ Production-Ready: Server-Side Rewind
 public class LagCompensation : NetworkBehaviour

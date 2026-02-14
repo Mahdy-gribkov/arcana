@@ -175,6 +175,71 @@ LOD DISTANCE SETUP:
 | PC | 3000-5000 | Very High | 8192px |
 | VR | 100-150 | Low | 2048px |
 
+## WebGPU Shader Example
+
+```wgsl
+// ✅ Production-Ready: WebGPU Compute Shader (Particle System)
+struct Particle {
+    position: vec3<f32>,
+    velocity: vec3<f32>,
+    life: f32,
+}
+
+@group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
+@group(0) @binding(1) var<uniform> deltaTime: f32;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let index = global_id.x;
+    if (index >= arrayLength(&particles)) {
+        return;
+    }
+
+    var particle = particles[index];
+
+    // Update position
+    particle.position += particle.velocity * deltaTime;
+
+    // Apply gravity
+    particle.velocity.y -= 9.8 * deltaTime;
+
+    // Reduce life
+    particle.life -= deltaTime;
+
+    // Reset if dead
+    if (particle.life <= 0.0) {
+        particle.position = vec3<f32>(0.0, 5.0, 0.0);
+        particle.velocity = vec3<f32>(
+            (fract(sin(f32(index) * 12.9898) * 43758.5453) - 0.5) * 2.0,
+            5.0,
+            (fract(sin(f32(index) * 78.233) * 43758.5453) - 0.5) * 2.0
+        );
+        particle.life = 3.0;
+    }
+
+    particles[index] = particle;
+}
+```
+
+```typescript
+// WebGPU setup (TypeScript)
+const computePipeline = device.createComputePipeline({
+  layout: "auto",
+  compute: {
+    module: device.createShaderModule({ code: shaderCode }),
+    entryPoint: "main",
+  },
+});
+
+const commandEncoder = device.createCommandEncoder();
+const passEncoder = commandEncoder.beginComputePass();
+passEncoder.setPipeline(computePipeline);
+passEncoder.setBindGroup(0, bindGroup);
+passEncoder.dispatchWorkgroups(Math.ceil(particleCount / 64));
+passEncoder.end();
+device.queue.submit([commandEncoder.finish()]);
+```
+
 ---
 
 **Use this skill**: When creating shaders, optimizing visuals, or implementing effects.

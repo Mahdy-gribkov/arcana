@@ -17,6 +17,25 @@ Secure the developer workstation as a critical node in the software supply chain
 - Audit `~/.ssh/authorized_keys` on servers you manage. Remove keys for departed team members immediately.
 - Use `ssh-keygen -l -f key.pub` to verify key fingerprints before trusting them.
 
+### Windows OpenSSH Agent Setup
+
+```powershell
+# Enable OpenSSH Agent service
+Get-Service ssh-agent | Set-Service -StartupType Automatic
+Start-Service ssh-agent
+
+# Add key to agent
+ssh-add $HOME\.ssh\id_ed25519
+
+# Configure Git to use OpenSSH (not Git's bundled ssh)
+git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"
+
+# Verify agent is running and key is loaded
+ssh-add -l
+```
+
+On Windows, the OpenSSH agent persists keys across reboots. You only need to add keys once after enabling the service.
+
 ## GPG Commit Signing
 
 - Generate a GPG key: `gpg --full-generate-key`. Use RSA 4096 or Ed25519.
@@ -26,6 +45,27 @@ Secure the developer workstation as a critical node in the software supply chain
 - Back up the private key securely. Losing it means you cannot prove authorship of past commits.
 - Set an expiration date on GPG keys (1-2 years). Extend before expiry rather than creating new keys.
 - Use `gpg --list-secret-keys --keyid-format=long` to find your key ID.
+
+### Gpg4win for Windows
+
+```powershell
+# Install Gpg4win (includes Kleopatra GUI)
+winget install GnuPG.Gpg4win
+
+# Generate key via Kleopatra or CLI
+gpg --full-generate-key
+
+# Configure Git to use GPG
+git config --global gpg.program "C:\Program Files (x86)\GnuPG\bin\gpg.exe"
+git config --global commit.gpgsign true
+git config --global user.signingkey <KEY_ID>
+
+# Export public key for GitHub
+gpg --armor --export <KEY_ID> | clip
+# Paste into GitHub Settings > SSH and GPG keys > New GPG key
+```
+
+Kleopatra provides a GUI for key management, making it easier to back up, import, and manage GPG keys on Windows.
 
 ## Credential Managers
 

@@ -63,6 +63,28 @@ GIT LFS CONFIGURATION:
 │  *.tga filter=lfs diff=lfs merge=lfs -text                 │
 │  *.zip filter=lfs diff=lfs merge=lfs -text                 │
 └─────────────────────────────────────────────────────────────┘
+
+GIT LFS BANDWIDTH GOTCHA:
+┌─────────────────────────────────────────────────────────────┐
+│  ⚠️  FREE TIER LIMITS:                                      │
+│  GitHub: 1GB storage, 1GB/month bandwidth                   │
+│  GitLab: 10GB storage, 10GB/month bandwidth                 │
+│                                                              │
+│  BANDWIDTH QUOTA EXCEEDED = BLOCKED CLONES/PULLS            │
+│                                                              │
+│  CLEANUP STRATEGY:                                           │
+│  # Remove old LFS files from history                        │
+│  git lfs prune --verify-remote                              │
+│                                                              │
+│  # Clone without LFS (fetch on demand)                      │
+│  GIT_LFS_SKIP_SMUDGE=1 git clone <repo>                     │
+│  git lfs pull --include="Assets/CurrentLevel/*"             │
+│                                                              │
+│  BEST PRACTICE:                                              │
+│  • Monitor usage in repo settings                          │
+│  • Use .lfsconfig to exclude dev builds                    │
+│  • Consider paid tier or self-hosted for large teams       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Commit Convention

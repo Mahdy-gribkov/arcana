@@ -100,6 +100,13 @@ CREATE INDEX idx_users_active_email ON users (email) WHERE is_active = true;
 
 -- Only index unprocessed jobs
 CREATE INDEX idx_jobs_pending ON jobs (created_at) WHERE status = 'pending';
+
+-- Example: Query using the partial index
+SELECT * FROM users WHERE email = 'user@example.com' AND is_active = true;
+-- Uses idx_users_active_email (fast, small index)
+
+SELECT * FROM users WHERE email = 'user@example.com' AND is_active = false;
+-- Cannot use partial index, falls back to seq scan or full email index
 ```
 
 Partial indexes are smaller, faster, and should be your first optimization before adding hardware.
@@ -172,6 +179,67 @@ CREATE INDEX CONCURRENTLY idx_users_email ON users (email);
 -- This does NOT lock the table. Regular CREATE INDEX does.
 ```
 5. **Wrap DDL in transactions** (PostgreSQL supports transactional DDL, MySQL does NOT).
+
+Tools: golang-migrate, Prisma Migrate, Drizzle Kit, Alembic (Python).
+
+## GORM (Go ORM)
+
+```go
+// Define models with tags
+type User struct {
+    ID        uint      `gorm:"primaryKey"`
+    Email     string    `gorm:"uniqueIndex;not null"`
+    Name      string    `gorm:"size:100;not null"`
+    Orders    []Order   `gorm:"foreignKey:UserID"`
+    CreatedAt time.Time `gorm:"autoCreateTime"`
+    UpdatedAt time.Time `gorm:"autoUpdateTime"`
+}
+
+type Order struct {
+    ID        uint      `gorm:"primaryKey"`
+    UserID    uint      `gorm:"index;not null"`
+    Total     float64   `gorm:"type:decimal(10,2);not null"`
+    Status    string    `gorm:"type:varchar(20);default:'pending'"`
+    CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+// Auto-migrate (development only, use migrations in production)
+db.AutoMigrate(&User{}, &Order{})
+
+// Queries with preloading (avoid N+1)
+var users []User
+db.Preload("Orders").Where("email LIKE ?", "%@example.com").Find(&users)
+
+// Raw SQL for complex queries
+var results []struct {
+    Name       string
+    OrderCount int64
+}
+db.Raw(`
+    SELECT users.name, COUNT(orders.id) as order_count
+    FROM users
+    LEFT JOIN orders ON orders.user_id = users.id
+    GROUP BY users.id
+`).Scan(&results)
+
+// Transactions
+err := db.Transaction(func(tx *gorm.DB) error {
+    if err := tx.Create(&user).Error; err != nil {
+        return err
+    }
+    if err := tx.Create(&order).Error; err != nil {
+        return err
+    }
+    return nil
+})
+```
+
+**GORM best practices:**
+- Use `gorm:"index"` on all foreign keys (GORM doesn't auto-index FKs).
+- Use `Preload()` or `Joins()` to avoid N+1 queries.
+- Never use `AutoMigrate` in production. Generate SQL and review before running.
+- Use `db.Raw()` for complex queries GORM can't express efficiently.
+- Add `gorm:"-"` to fields that shouldn't be persisted.
 
 Tools: golang-migrate, Prisma Migrate, Drizzle Kit, Alembic (Python).
 

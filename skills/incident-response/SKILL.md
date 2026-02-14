@@ -92,3 +92,91 @@ Handle production incidents with speed, clarity, and accountability. This skill 
 - Update runbooks with lessons learned from the incident.
 - Share incident learnings in team retrospectives and engineering all-hands.
 - Measure MTTR (Mean Time to Resolution) and MTTD (Mean Time to Detection) over time. Both should trend downward.
+
+## PagerDuty/OpsGenie Webhook Integration
+
+```typescript
+// ✅ Production-Ready: PagerDuty Events API v2
+import axios from "axios";
+
+interface PagerDutyEvent {
+  routing_key: string;
+  event_action: "trigger" | "acknowledge" | "resolve";
+  dedup_key?: string;
+  payload: {
+    summary: string;
+    severity: "critical" | "error" | "warning" | "info";
+    source: string;
+    timestamp?: string;
+    custom_details?: Record<string, unknown>;
+  };
+}
+
+async function triggerPagerDutyAlert(
+  routingKey: string,
+  summary: string,
+  severity: "critical" | "error" | "warning" | "info",
+  details?: Record<string, unknown>
+) {
+  const event: PagerDutyEvent = {
+    routing_key: routingKey,
+    event_action: "trigger",
+    payload: {
+      summary,
+      severity,
+      source: "monitoring-system",
+      timestamp: new Date().toISOString(),
+      custom_details: details,
+    },
+  };
+
+  const response = await axios.post(
+    "https://events.pagerduty.com/v2/enqueue",
+    event,
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  return response.data.dedup_key; // Use this to acknowledge/resolve later
+}
+
+// Usage: trigger SEV-1 alert
+const dedupKey = await triggerPagerDutyAlert(
+  process.env.PAGERDUTY_ROUTING_KEY!,
+  "Database connection pool exhausted",
+  "critical",
+  { activeConnections: 100, maxConnections: 100, queuedRequests: 250 }
+);
+```
+
+```python
+# OpsGenie Alert API
+import requests
+import os
+
+def create_opsgenie_alert(message: str, priority: str, details: dict):
+    """Create OpsGenie alert via REST API."""
+    url = "https://api.opsgenie.com/v2/alerts"
+    headers = {
+        "Authorization": f"GenieKey {os.getenv('OPSGENIE_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "message": message,
+        "priority": priority,  # P1-P5
+        "details": details,
+        "tags": ["production", "automated"],
+        "source": "monitoring"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    return response.json()["requestId"]
+
+# Usage
+create_opsgenie_alert(
+    message="API latency p99 > 2s for 5 minutes",
+    priority="P1",
+    details={"p99_latency": "2.3s", "endpoint": "/api/orders", "region": "us-east-1"}
+)
+```

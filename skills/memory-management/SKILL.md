@@ -396,6 +396,83 @@ public class StreamingManager : MonoBehaviour
 | GC | Incremental GC | Medium | Low |
 | Events | Weak References | Low | Medium |
 
+## Rust Ownership Comparison
+
+Rust's borrow checker enforces memory safety at compile time, eliminating entire classes of bugs common in manual memory management.
+
+```rust
+// ✅ Rust: Ownership prevents use-after-free
+fn main() {
+    let player = Player::new("Alice");
+
+    // Ownership transferred to process_player
+    process_player(player);
+
+    // ❌ Compile error: value moved
+    // println!("{}", player.name);
+}
+
+fn process_player(p: Player) {
+    // p is dropped here automatically
+}
+
+// ✅ Rust: Borrowing for shared access
+fn main() {
+    let player = Player::new("Bob");
+
+    // Borrow immutably (many readers allowed)
+    print_player(&player);
+    print_player(&player);
+
+    // Still valid, ownership retained
+    println!("{}", player.name);
+}
+
+fn print_player(p: &Player) {
+    println!("Player: {}", p.name);
+}
+
+// ✅ Rust: Mutable borrowing (exclusive access)
+fn main() {
+    let mut player = Player::new("Charlie");
+
+    // Mutable borrow (only one allowed at a time)
+    damage_player(&mut player, 25);
+
+    println!("Health: {}", player.health);
+}
+
+fn damage_player(p: &mut Player, amount: i32) {
+    p.health -= amount;
+}
+```
+
+```cpp
+// ❌ C++: Manual management allows errors
+void main() {
+    Player* player = new Player("Alice");
+
+    process_player(player);
+
+    // ⚠️ Compiles, but use-after-free if process_player deletes
+    std::cout << player->name;
+
+    delete player; // Might be double-free
+}
+
+// ✅ C++: Smart pointers help (but optional)
+void main() {
+    auto player = std::make_unique<Player>("Bob");
+
+    // Transfer ownership explicitly
+    process_player(std::move(player));
+
+    // player is now nullptr, safer but still manual
+}
+```
+
+**Key Difference**: Rust enforces ownership rules at compile time. C++ smart pointers are opt-in and don't prevent logic errors like accessing moved-from objects. Rust makes memory safety the default, not an afterthought.
+
 ---
 
 **Use this skill**: When optimizing memory usage, reducing frame stutters, or supporting mobile platforms.

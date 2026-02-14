@@ -180,6 +180,39 @@ repos:
 
 **Runtime secrets:** Use environment variables or a secrets manager (AWS SSM, Vault, Doppler). Never hardcode. Never log secrets. Rotate regularly.
 
+### Secrets Rotation
+
+**Rotation schedule:**
+- API keys: Every 90 days
+- Database passwords: Every 90 days or on personnel changes
+- JWT signing keys: Every 6-12 months
+- TLS certificates: Automated via Let's Encrypt (90-day expiry)
+- Service account tokens: Every 30-90 days
+
+**Rotation process:**
+1. Generate new secret (key/password/token)
+2. Add new secret to secrets manager
+3. Deploy code that supports BOTH old and new secrets
+4. Update clients to use new secret
+5. Remove old secret after grace period (24-48 hours)
+
+```bash
+# Example: Rotate database password with zero downtime
+# 1. Generate new password
+NEW_PASS=$(openssl rand -base64 32)
+
+# 2. Update DB user with new password
+psql -c "ALTER USER myapp PASSWORD '$NEW_PASS';"
+
+# 3. Update secrets manager
+aws ssm put-parameter --name /prod/db/password --value "$NEW_PASS" --overwrite
+
+# 4. Rolling restart app servers to pick up new secret
+kubectl rollout restart deployment/myapp
+
+# 5. Verify all instances use new password before removing old one
+```
+
 ```python
 # GOOD: secrets from environment with validation
 import os
@@ -227,8 +260,26 @@ For cookie-based auth (sessions), use the synchronizer token pattern or SameSite
 ```javascript
 // Option 1: SameSite=Strict cookies (sufficient for most apps)
 // Option 2: CSRF token (needed if SameSite=Lax or cross-subdomain)
-import csrf from "csurf";
-app.use(csrf({ cookie: { httpOnly: true, secure: true, sameSite: "strict" } }));
+
+// Modern approach: csrf-csrf (csurf is deprecated)
+import { doubleCsrf } from "csrf-csrf";
+
+const { generateToken, doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET,
+  cookieName: "__Host-csrf",
+  cookieOptions: { httpOnly: true, secure: true, sameSite: "strict" },
+  getTokenFromRequest: (req) => req.headers["x-csrf-token"],
+});
+
+app.use(doubleCsrfProtection);
+
+// Alternative: Double-submit cookie pattern (manual)
+app.post("/api/action", (req, res) => {
+  const tokenFromCookie = req.cookies.csrfToken;
+  const tokenFromHeader = req.headers["x-csrf-token"];
+  if (tokenFromCookie !== tokenFromHeader) return res.status(403).send("CSRF validation failed");
+  // Process request
+});
 ```
 
 Token-based auth (Bearer JWT in Authorization header) is inherently CSRF-safe because browsers don't auto-attach it.

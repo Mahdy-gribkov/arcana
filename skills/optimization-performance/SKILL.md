@@ -192,6 +192,73 @@ VR OPTIMIZATION:
 | Godot | Profiler | GPU Debugger | Built-in |
 | Any | Platform tools | RenderDoc/PIX | Valgrind/Instruments |
 
+## LCP Image Optimization: Responsive srcset
+
+```html
+<!-- ✅ Production-Ready: Responsive hero image for fast LCP -->
+<img
+  src="hero-800w.webp"
+  srcset="
+    hero-400w.webp   400w,
+    hero-800w.webp   800w,
+    hero-1200w.webp 1200w,
+    hero-1600w.webp 1600w
+  "
+  sizes="
+    (max-width: 640px) 100vw,
+    (max-width: 1024px) 90vw,
+    1200px
+  "
+  alt="Game hero banner"
+  fetchpriority="high"
+  decoding="async"
+  width="1200"
+  height="600"
+/>
+
+<!-- ✅ Above-the-fold critical CSS -->
+<style>
+  img[fetchpriority="high"] {
+    content-visibility: auto;
+    contain-intrinsic-size: 1200px 600px;
+  }
+</style>
+```
+
+**Why this improves LCP:**
+- `srcset`: Browser downloads only the size it needs (saves bandwidth on mobile)
+- `sizes`: Tells browser viewport-relative width before layout (prevents double download)
+- `fetchpriority="high"`: Prioritizes this image over other resources
+- `width`/`height`: Prevents layout shift (CLS), reserves space immediately
+- WebP: 25-35% smaller than JPEG at same quality
+
+**Bad practice:**
+```html
+<!-- ❌ BAD: Forces all devices to download 3MB desktop image -->
+<img src="hero-4k.jpg" style="width: 100%" />
+```
+
+**Generate srcset images:**
+```bash
+# Using sharp (Node.js)
+npm install sharp
+
+node -e "
+const sharp = require('sharp');
+[400, 800, 1200, 1600].forEach(w => {
+  sharp('hero.jpg')
+    .resize(w)
+    .webp({ quality: 85 })
+    .toFile(\`hero-\${w}w.webp\`);
+});
+"
+```
+
+**Measurement:**
+- Chrome DevTools > Lighthouse > Performance
+- Target: LCP < 2.5s (good), < 4s (needs improvement)
+- Check Network tab: verify correct image size downloaded per viewport
+
 ---
 
 **Use this skill**: When optimizing games, profiling performance, or supporting multiple platforms.

@@ -246,6 +246,41 @@ description: One or two sentences describing the page.
 > - Multi-line note point 2
 ```
 
+## Screenshot Insert Pattern
+
+When documenting visual features or UI changes, include screenshots with proper formatting:
+
+### Adding Screenshots
+
+1. **Capture and save**: Save screenshots to `public/docs/` with descriptive names
+2. **Optimize**: Use WebP format, max 1200px width
+3. **Insert with proper markup**:
+
+```mdx
+![Alt text describing the screenshot](/docs/feature-name.webp)
+```
+
+### Screenshot Guidelines
+
+- Use descriptive alt text for accessibility
+- Keep file sizes under 200KB (optimize with tools)
+- Use consistent naming: `feature-area-description.webp`
+- Show realistic data, not "Lorem ipsum"
+- Highlight relevant UI elements with annotations if needed
+- Update screenshots when UI changes
+
+### Example: Documenting a new component
+
+```mdx
+## Visual Example
+
+The Image component optimizes images automatically:
+
+![Next.js Image component showing responsive image with automatic format selection](/docs/image-component-example.webp)
+
+Notice how the image loads progressively with a blur placeholder.
+```
+
 ## Validation Checklist
 
 Before committing documentation changes:
@@ -255,6 +290,7 @@ Before committing documentation changes:
 - [ ] TypeScript examples use `switcher` with JS variant
 - [ ] Props tables are properly formatted
 - [ ] Related links point to valid paths
+- [ ] Screenshots optimized and properly captioned
 - [ ] `pnpm lint` passes
 - [ ] Changes render correctly (if preview available)
 

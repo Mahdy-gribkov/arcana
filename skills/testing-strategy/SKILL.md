@@ -249,6 +249,73 @@ it("formats error response correctly", () => {
 For Go: `go test -race -coverprofile=coverage.out ./...` then `go tool cover -func=coverage.out`.
 For Python: `pytest --cov=src --cov-report=xml --cov-fail-under=80`.
 
+## Flakiness Detection and Prevention
+
+### Identifying Flaky Tests
+Tests that pass/fail non-deterministically are flaky. Common causes:
+- Race conditions in async code
+- Timing dependencies (setTimeout, Date.now())
+- Shared global state between tests
+- Network dependencies without proper mocking
+- Random data generation without seeding
+
+### Flakiness Detection Pattern
+```typescript
+// Run test multiple times to detect flakiness
+describe("potential flaky test", () => {
+  it.each(Array.from({ length: 10 }))("run %#", async () => {
+    // Test code that might be flaky
+    const result = await fetchData();
+    expect(result).toBeDefined();
+  });
+});
+```
+
+### Timing Isolation Patterns
+```typescript
+// BAD: Real timers, flaky
+test("debounce", async () => {
+  debounce(fn, 100);
+  await new Promise((r) => setTimeout(r, 150)); // Flaky on slow CI
+  expect(fn).toHaveBeenCalled();
+});
+
+// GOOD: Fake timers, deterministic
+test("debounce", () => {
+  vi.useFakeTimers();
+  debounce(fn, 100);
+  vi.advanceTimersByTime(150);
+  expect(fn).toHaveBeenCalled();
+  vi.useRealTimers();
+});
+
+// GOOD: Inject clock for testability
+class Timer {
+  constructor(private clock = Date) {}
+  now() { return this.clock.now(); }
+}
+
+// Test with fake clock
+const fakeClock = { now: () => 1000 };
+const timer = new Timer(fakeClock);
+```
+
+### Retry Logic for E2E
+```typescript
+// Playwright: auto-retry assertions
+await expect(page.getByText("Success")).toBeVisible({ timeout: 5000 });
+
+// Custom retry for non-assertion operations
+async function retryUntil<T>(fn: () => Promise<T>, predicate: (val: T) => boolean, maxAttempts = 3) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const result = await fn();
+    if (predicate(result)) return result;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error("Retry exhausted");
+}
+```
+
 ## Anti-Patterns to Avoid
 
 - **Testing implementation**: Assert on behavior and output, never on internal method calls.

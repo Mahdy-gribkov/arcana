@@ -134,13 +134,59 @@ services:
 - Pass build-time config via `ARG` and `--build-arg`.
 - Inject runtime config via environment variables at container start.
 
-## Platform-Specific Guidance
+## dotenv-vault
 
-### Vercel
+Encrypted .env files for teams. Alternative to secrets managers for small projects.
+
+```bash
+# Install
+npm install dotenv-vault-core
+
+# Setup
+npx dotenv-vault new
+npx dotenv-vault push production  # Upload .env to vault
+
+# In production, use DOTENV_KEY instead of .env file
+DOTENV_KEY="dotenv://vault-key-here" node server.js
+```
+
+```javascript
+// Load in app
+require('dotenv-vault-core').config();
+console.log(process.env.DATABASE_URL);  // Decrypted from vault
+```
+
+**When to use:** Small teams (< 10 people), need encryption at rest, want git-based workflow without committing secrets.
+
+## Cloud Provider Env Patterns
+
+### AWS Systems Manager (SSM) Parameter Store
+
+```javascript
+// Fetch secrets at startup
+import { SSMClient, GetParametersCommand } from "@aws-sdk/client-ssm";
+
+const client = new SSMClient({ region: "us-east-1" });
+const response = await client.send(new GetParametersCommand({
+  Names: ["/myapp/database-url", "/myapp/api-key"],
+  WithDecryption: true,
+}));
+
+const env = {};
+for (const param of response.Parameters) {
+  const key = param.Name.split('/').pop().toUpperCase().replace('-', '_');
+  env[key] = param.Value;
+}
+
+// Now use env.DATABASE_URL, env.API_KEY
+```
+
+### Vercel Environment Variables
 
 - Set env vars in the Vercel dashboard or via `vercel env add`.
 - Prefix client-exposed vars with `NEXT_PUBLIC_` in Next.js.
 - Use different values per environment (Production, Preview, Development).
+- Pull env vars to local: `vercel env pull .env.local`.
 
 ### GitHub Actions
 

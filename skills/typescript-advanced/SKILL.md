@@ -167,6 +167,65 @@ routes2.home.path; // "/" (literal preserved)
 routes2.missing; // Compile error: property doesn't exist
 ```
 
+### Deep Dive: When to Use `satisfies`
+
+**Use `satisfies` when you want:**
+1. Type validation at declaration without widening
+2. Autocomplete on object keys
+3. Literal type preservation for better type narrowing
+
+```typescript
+// Example 1: Config with literal preservation
+type Config = {
+  env: "development" | "staging" | "production";
+  features: Record<string, boolean>;
+};
+
+const config = {
+  env: "production",
+  features: { darkMode: true, beta: false },
+} satisfies Config;
+
+config.env; // "production" (literal), not string
+
+// Example 2: Catch typos in object keys
+type APIEndpoints = Record<"users" | "posts" | "comments", string>;
+
+const endpoints = {
+  users: "/api/users",
+  posts: "/api/posts",
+  // comments: "/api/comments", // Missing — satisfies catches this
+} satisfies APIEndpoints; // Error: missing "comments"
+
+// Example 3: Discriminated union with exhaustiveness
+type Status =
+  | { kind: "idle" }
+  | { kind: "loading"; progress: number }
+  | { kind: "error"; message: string };
+
+const current = {
+  kind: "loading",
+  progress: 42,
+} satisfies Status;
+
+current.kind; // "loading" (literal), enables exhaustive switch
+
+// Example 4: Combining with const assertion
+const ROUTES = {
+  home: "/",
+  about: "/about",
+  contact: "/contact",
+} as const satisfies Record<string, string>;
+
+type RouteKeys = keyof typeof ROUTES; // "home" | "about" | "contact"
+ROUTES.home; // "/" (literal string)
+```
+
+**When NOT to use `satisfies`:**
+- When you actually want widening (accepting any string, not just literals)
+- When the type is already narrow enough (primitive types)
+- When using with functions (use return type annotation instead)
+
 ## `const` Assertions
 
 Freeze literal types at declaration. Pairs with `satisfies` for validated readonly data.

@@ -10,7 +10,7 @@ description: Game programming languages - C#, C++, GDScript. Learn syntax, patte
 **Easiest to learn**, **most used for game dev**
 
 ```csharp
-// ✅ Production-Ready: Unity MonoBehaviour Template
+// ✅ Production-Ready: Unity MonoBehaviour Template (C# 12)
 public class GameEntity : MonoBehaviour
 {
     [SerializeField] private float _speed = 5f;
@@ -39,6 +39,18 @@ public class GameEntity : MonoBehaviour
             OnDeath?.Invoke();
     }
 }
+
+// C# 12: Primary constructors for data classes
+public class PlayerStats(int health, int mana, float speed)
+{
+    public int Health { get; set; } = health;
+    public int Mana { get; set; } = mana;
+    public float Speed { get; set; } = speed;
+}
+
+// C# 12: Collection expressions
+List<int> levels = [1, 2, 3, 4, 5];
+Span<Vector3> positions = [new(0, 0, 0), new(1, 1, 1)];
 ```
 
 **Key Features:**
@@ -47,6 +59,7 @@ public class GameEntity : MonoBehaviour
 - Coroutines for async game logic
 - Events and delegates
 - Garbage collection (requires optimization)
+- C# 12: Primary constructors, collection expressions
 
 **Learning Path**: 2-3 weeks basics, 2-3 months mastery
 
@@ -55,7 +68,7 @@ public class GameEntity : MonoBehaviour
 **Most powerful**, **steepest learning curve**
 
 ```cpp
-// ✅ Production-Ready: Unreal Actor Template
+// ✅ Production-Ready: Unreal Actor Template (C++23)
 UCLASS()
 class MYGAME_API AGameEntity : public AActor
 {
@@ -83,6 +96,32 @@ protected:
     UFUNCTION()
     void OnRep_Health();
 };
+
+// C++23: std::expected for error handling
+#include <expected>
+
+std::expected<WeaponData, FString> LoadWeapon(const FString& Path)
+{
+    if (!FPaths::FileExists(Path))
+        return std::unexpected("File not found");
+
+    WeaponData data = ParseWeaponFile(Path);
+    if (!data.IsValid())
+        return std::unexpected("Invalid weapon data");
+
+    return data;
+}
+
+// C++23: Deducing this (explicit object parameter)
+struct Transform
+{
+    FVector Position;
+
+    auto& SetPosition(this auto& self, const FVector& Pos) {
+        self.Position = Pos;
+        return self;
+    }
+};
 ```
 
 **Key Features:**
@@ -91,6 +130,7 @@ protected:
 - Maximum performance
 - Unreal reflection system (UPROPERTY, UFUNCTION)
 - Blueprint integration
+- C++23: std::expected, deducing this, ranges
 
 **Learning Path**: 4-6 weeks basics, 4-6 months proficiency
 

@@ -82,6 +82,11 @@ asyncio_mode = "auto"
 [tool.mypy]
 strict = true
 python_version = "3.12"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
 ```
 
 ## uv Package Manager
@@ -98,9 +103,15 @@ uv add --dev ruff pytest    # dev dependencies
 uv sync                     # install all deps from lockfile
 uv run pytest               # run inside venv without activation
 uv run ruff check src/      # lint
+uv run mypy src/            # type check with mypy
+uv run pyright src/         # type check with pyright (faster, VSCode default)
 ```
 
 **Why uv over pip:** 10-100x faster, built-in lockfile (`uv.lock`), replaces 5 tools in one binary, written in Rust.
+
+**Type checker comparison:**
+- **mypy**: Industry standard, slower, more mature plugins.
+- **pyright**: Faster, VS Code default, better error messages, strict mode catches more edge cases.
 
 ## Type Hints (strict, everywhere)
 

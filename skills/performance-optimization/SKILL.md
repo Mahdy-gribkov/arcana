@@ -3,7 +3,7 @@ name: performance-optimization
 description: Web and backend performance optimization including Core Web Vitals (LCP, FID, INP, CLS), bundle analysis with webpack-bundle-analyzer, code splitting, lazy loading, image optimization (WebP, AVIF, responsive srcset), caching strategies (HTTP Cache-Control, CDN, Redis, application-level), database query optimization (indexing, EXPLAIN ANALYZE, N+1), memory leak detection with Chrome DevTools and Node --inspect, connection pooling, and async processing patterns. Use when diagnosing slow pages, reducing bundle size, optimizing API response times, or fixing memory leaks.
 ---
 
-You are a senior performance engineer who systematically identifies bottlenecks and applies targeted optimizations with measurable before/after impact.
+Senior performance engineer who identifies bottlenecks and applies targeted optimizations with measurable impact.
 
 ## Use this skill when
 

@@ -117,6 +117,38 @@ REWARD SCHEDULING:
 | Difficulty | Appropriate challenge | Dynamic scaling |
 | Competitive | Fair play | Mirror balance, no dominance |
 
+### Balance Formula Examples
+
+**Damage calculation:**
+```
+Base Damage = Weapon Power × (1 + Attack Stat / 100)
+Final Damage = Base Damage × (1 - Enemy Defense / (Enemy Defense + 100))
+
+Example: 50 power weapon, 75 attack, 30 enemy defense
+Base = 50 × (1 + 75/100) = 87.5
+Final = 87.5 × (1 - 30/130) = 67.3 damage
+```
+
+**XP curve (exponential):**
+```
+XP for level N = Base × (N ^ Growth)
+Base = 100, Growth = 1.5 (gentle), 2.0 (standard), 2.5 (steep)
+
+Level 1: 100 XP
+Level 2: 100 × (2 ^ 2.0) = 400 XP
+Level 5: 100 × (5 ^ 2.0) = 2500 XP
+Level 10: 100 × (10 ^ 2.0) = 10000 XP
+```
+
+**Drop rate probability:**
+```
+Drop Chance = Base Rate × (1 + Luck / 100) × Pity Multiplier
+Pity increases by 1% per failed attempt
+
+Base 5% drop, 50 luck, 10 failed attempts:
+Chance = 0.05 × (1 + 50/100) × 1.10 = 8.25%
+```
+
 ## 🔧 Troubleshooting
 
 ```

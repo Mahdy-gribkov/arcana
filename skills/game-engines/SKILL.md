@@ -223,22 +223,25 @@ GODOT NODE SYSTEM:
 ```
 
 ```gdscript
-# ✅ Production-Ready: Godot Player Controller
+# ✅ Production-Ready: Godot 4.x Player Controller (GDScript 2.0)
 extends CharacterBody2D
 
 class_name Player
 
-signal health_changed(new_health, max_health)
+# Signals use typed parameters in GDScript 2.0
+signal health_changed(new_health: int, max_health: int)
 signal died()
 
 @export var move_speed: float = 200.0
 @export var jump_force: float = 400.0
 @export var max_health: int = 100
 
+# @onready uses $ shorthand for get_node()
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var animation: AnimationPlayer = $AnimationPlayer
 @onready var coyote_timer: Timer = $CoyoteTimer
 
+# get_setting returns ProjectSettings value
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var current_health: int
 var can_coyote_jump: bool = false
@@ -251,41 +254,42 @@ func _physics_process(delta: float) -> void:
     if not is_on_floor():
         velocity.y += gravity * delta
 
-    # Handle coyote time
+    # Handle coyote time (jump shortly after leaving edge)
     if is_on_floor():
         can_coyote_jump = true
     elif can_coyote_jump and coyote_timer.is_stopped():
         coyote_timer.start()
 
-    # Jump
+    # Jump with Input.is_action_just_pressed (checks input map)
     if Input.is_action_just_pressed("jump"):
         if is_on_floor() or can_coyote_jump:
             velocity.y = -jump_force
             can_coyote_jump = false
 
-    # Horizontal movement
+    # Horizontal movement - Input.get_axis returns -1 to 1
     var direction := Input.get_axis("move_left", "move_right")
     velocity.x = direction * move_speed
 
-    # Flip sprite
+    # Flip sprite based on direction
     if direction != 0:
         sprite.flip_h = direction < 0
 
-    # Update animation
+    # Update animation state
     _update_animation()
 
+    # move_and_slide() is Godot 4.x API (no parameters needed)
     move_and_slide()
 
 func _update_animation() -> void:
     if not is_on_floor():
         animation.play("jump")
-    elif abs(velocity.x) > 10:
+    elif absf(velocity.x) > 10:  # absf for float abs in GDScript 2.0
         animation.play("run")
     else:
         animation.play("idle")
 
 func take_damage(amount: int) -> void:
-    current_health = max(0, current_health - amount)
+    current_health = maxi(0, current_health - amount)  # maxi for int max
     health_changed.emit(current_health, max_health)
 
     if current_health <= 0:
@@ -298,6 +302,13 @@ func die() -> void:
 func _on_coyote_timer_timeout() -> void:
     can_coyote_jump = false
 ```
+
+**Godot 4.x API changes:**
+- `move_and_slide()` no longer takes parameters (velocity is a property)
+- `absf()` and `maxi()`/`maxf()` for typed math functions
+- `@export`, `@onready`, `@tool` annotations replace `export`, `onready`
+- Typed signals: `signal name(param: Type)`
+- `is_on_floor()` replaces `is_on_floor()` (same API, verified working)
 
 ## Engine Feature Comparison
 

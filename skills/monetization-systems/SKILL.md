@@ -214,6 +214,71 @@ MONETIZATION KPIS:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## A/B Test Revenue Impact
+
+```
+A/B TEST REVENUE FORMULA:
+┌─────────────────────────────────────────────────────────────┐
+│  Revenue Impact = (Variant ARPU - Control ARPU) × DAU       │
+│                                                              │
+│  EXAMPLE:                                                    │
+│  Control:  ARPU = $0.20, 10,000 DAU                         │
+│  Variant:  ARPU = $0.25, 10,000 DAU                         │
+│                                                              │
+│  Daily Impact:   ($0.25 - $0.20) × 10,000 = $500/day        │
+│  Monthly Impact: $500 × 30 = $15,000/month                  │
+│  Annual Impact:  $15,000 × 12 = $180,000/year               │
+├─────────────────────────────────────────────────────────────┤
+│  STATISTICAL SIGNIFICANCE:                                   │
+│  • Minimum sample: 100 conversions per variant             │
+│  • Target p-value: < 0.05 (95% confidence)                 │
+│  • Run duration: 7-14 days minimum                         │
+│                                                              │
+│  WATCH FOR:                                                  │
+│  • Revenue up, retention down = short-term win, long loss  │
+│  • Test during normal periods (avoid holidays/events)      │
+│  • Segment by user cohort (new vs veteran players)         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+```python
+# Calculate A/B test significance
+from scipy import stats
+
+def calculate_ab_significance(
+    control_conversions: int,
+    control_users: int,
+    variant_conversions: int,
+    variant_users: int
+) -> dict:
+    """Chi-square test for A/B test significance."""
+
+    control_rate = control_conversions / control_users
+    variant_rate = variant_conversions / variant_users
+
+    # Chi-square test
+    observed = [[control_conversions, control_users - control_conversions],
+                [variant_conversions, variant_users - variant_conversions]]
+    chi2, p_value, dof, expected = stats.chi2_contingency(observed)
+
+    return {
+        "control_rate": f"{control_rate:.2%}",
+        "variant_rate": f"{variant_rate:.2%}",
+        "lift": f"{((variant_rate / control_rate) - 1) * 100:.1f}%",
+        "p_value": p_value,
+        "significant": p_value < 0.05
+    }
+
+# Example
+result = calculate_ab_significance(
+    control_conversions=200,
+    control_users=10000,
+    variant_conversions=250,
+    variant_users=10000
+)
+print(f"Lift: {result['lift']}, Significant: {result['significant']}")
+```
+
 ## 🔧 Troubleshooting
 
 ```

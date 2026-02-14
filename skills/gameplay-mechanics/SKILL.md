@@ -247,6 +247,74 @@ PLATFORMER FEEL PARAMETERS:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Input Buffering Example
+
+```csharp
+// ✅ Production-Ready: Input buffering for responsive controls
+public class InputBuffer : MonoBehaviour
+{
+    [SerializeField] private float bufferTime = 0.15f;
+
+    private Dictionary<string, float> _bufferedInputs = new();
+
+    private void Update()
+    {
+        // Buffer jump input
+        if (Input.GetButtonDown("Jump"))
+        {
+            _bufferedInputs["Jump"] = Time.time;
+        }
+
+        // Buffer attack input
+        if (Input.GetButtonDown("Fire1"))
+        {
+            _bufferedInputs["Attack"] = Time.time;
+        }
+
+        // Clear expired buffers
+        var expired = _bufferedInputs
+            .Where(kvp => Time.time - kvp.Value > bufferTime)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in expired)
+        {
+            _bufferedInputs.Remove(key);
+        }
+    }
+
+    // Check if input was pressed within buffer window
+    public bool ConsumeBuffer(string action)
+    {
+        if (_bufferedInputs.TryGetValue(action, out float time))
+        {
+            if (Time.time - time <= bufferTime)
+            {
+                _bufferedInputs.Remove(action);
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+// Usage in player controller
+private void FixedUpdate()
+{
+    // Check buffered jump when landing
+    if (_isGrounded && _inputBuffer.ConsumeBuffer("Jump"))
+    {
+        Jump();
+    }
+}
+```
+
+**Benefits:**
+- Registers inputs pressed slightly before they're valid (e.g., jump pressed just before landing)
+- Prevents missed inputs due to frame timing
+- Makes controls feel more responsive
+- Essential for fast-paced action games and fighting games
+
 ## Event-Driven Architecture
 
 ```

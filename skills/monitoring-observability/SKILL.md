@@ -326,3 +326,88 @@ Every alert must link to a runbook. Template:
 ### Resolution
 - Root cause in incident doc. Link post-mortem within 48 hours.
 ```
+
+## Grafana Dashboard JSON Snippet
+
+```json
+{
+  "dashboard": {
+    "title": "API Service Overview",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{service=\"order-api\"}[5m])",
+            "legendFormat": "{{method}} {{path}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 2,
+        "title": "Error Rate %",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 * rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+            "legendFormat": "5xx errors"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": { "params": [1], "type": "gt" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "type": "avg" },
+              "type": "query"
+            }
+          ],
+          "name": "High Error Rate",
+          "message": "Error rate exceeded 1% for 5 minutes"
+        }
+      },
+      {
+        "id": 3,
+        "title": "P99 Latency",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.5, "color": "yellow" },
+                { "value": 1, "color": "red" }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+Import via: Grafana UI > Dashboards > Import > paste JSON or use Grafana HTTP API:
+
+```bash
+curl -X POST http://localhost:3000/api/dashboards/db \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+  -d @dashboard.json
+```

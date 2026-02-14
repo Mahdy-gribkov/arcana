@@ -107,6 +107,21 @@ Documentation and reference material intended to be loaded as needed into contex
 - **Best practice**: If files are large (>150 lines), split them into multiple files (<150 lines each) in `references` folder, include grep search patterns in `SKILL.md`
 - **Avoid duplication**: Information should live in either `SKILL.md` or `references` files, not both. Prefer `references` files for detailed information unless it's truly core to the skill—this keeps `SKILL.md` lean while making information discoverable without hogging the context window. Keep only essential procedural instructions and workflow guidance in `SKILL.md`; move detailed reference material, schemas, and examples to `references` files.
 
+**Validation reference structure example:**
+```
+skill-name/
+├── SKILL.md
+└── references/
+    ├── workflows.md        # Sequential process guides
+    ├── api-patterns.md     # Common API usage patterns
+    ├── schemas/
+    │   ├── user.md         # User data schema
+    │   └── order.md        # Order data schema
+    └── examples/
+        ├── basic.md        # Basic usage examples
+        └── advanced.md     # Advanced usage examples
+```
+
 **IMPORTANT:**
 - Referenced markdown files should be also **less than 150 lines**, remember that you can always split them into multiple files (**progressive disclosure** principle).
 - Referenced markdown files are practical instructions for Claude Code to use the tools, packages, plugins or APIs to achieve the tasks.

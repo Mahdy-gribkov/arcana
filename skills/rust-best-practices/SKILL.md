@@ -42,6 +42,35 @@ struct Config<'a> {
 }
 ```
 
+**Lifetime scopes visualized:**
+```
+┌─────────────────────────────────────────┐
+│ fn example() {                          │
+│   let owner = String::from("data");    │ ← 'owner lives here
+│   ├─────────────────────────┐           │
+│   │ let borrowed = &owner;  │           │ ← 'borrowed valid
+│   │ println!("{borrowed}"); │           │   while owner alive
+│   └─────────────────────────┘           │
+│ } ← owner dropped, borrowed invalid     │
+└─────────────────────────────────────────┘
+
+Multiple borrows:
+┌─────────────────────────────────────────┐
+│ fn multi() {                            │
+│   let mut data = vec![1, 2, 3];        │
+│   ├───────────────────┐                 │
+│   │ let r1 = &data;   │                 │ ← immutable borrows OK
+│   │ let r2 = &data;   │                 │
+│   │ println!("{r1}"); │                 │
+│   └───────────────────┘                 │
+│   ├───────────────────┐                 │
+│   │ let r3 = &mut data; │               │ ← mutable borrow alone
+│   │ r3.push(4);       │                 │
+│   └───────────────────┘                 │
+│ }                                       │
+└─────────────────────────────────────────┘
+```
+
 **Common pitfall** - returning references to local data:
 ```rust
 // BAD: returns reference to local String

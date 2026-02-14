@@ -218,14 +218,20 @@ PRE-SUBMISSION CHECKLIST:
 
 ## Platform Comparison
 
-| Platform | Fee | Revenue Share | Review Time |
-|----------|-----|---------------|-------------|
-| Steam | $100/game | 70/30 (scaling) | 1-5 days |
-| Epic | None | 88/12 | 1-2 weeks |
-| PlayStation | Slot fee | 70/30 | 2-4 weeks |
-| Xbox | Free (ID@Xbox) | 70/30 | 1-3 weeks |
-| iOS | $99/year | 70/30 (85/15) | 1-2 days |
-| Android | $25 one-time | 85/15 | Hours-7 days |
+| Platform | Fee | Revenue Share | Review Time | Notes |
+|----------|-----|---------------|-------------|-------|
+| Steam | $100/game | 70/30 (80/20 >$10M, 75/25 >$50M) | 1-5 days | Tiered split favors high earners |
+| Epic | None | 88/12 | 1-2 weeks | Best revenue split, exclusive deals available |
+| PlayStation | Slot fee | 70/30 | 2-4 weeks | Plus certification costs |
+| Xbox | Free (ID@Xbox) | 70/30 | 1-3 weeks | Game Pass revenue separate model |
+| iOS | $99/year | 70/30 (85/15 after year 1) | 1-2 days | 85/15 for subscriptions after 1 year |
+| Android | $25 one-time | 85/15 | Hours-7 days | Lower share, faster approval |
+
+**Revenue Split Breakdown:**
+- **Steam**: 70% developer / 30% platform. Scales to 75/25 after $10M revenue, 80/20 after $50M.
+- **Epic**: 88% developer / 12% platform. No tiers, flat rate.
+- **Console (PS/Xbox)**: 70% developer / 30% platform. Physical copies have additional retail cut.
+- **Mobile (iOS/Android)**: 70% developer / 30% platform first year, then 85/15 for subscriptions (iOS only).
 
 ---
 

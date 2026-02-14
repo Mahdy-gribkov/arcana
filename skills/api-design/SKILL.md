@@ -202,6 +202,24 @@ Retry-After: 30                    # seconds (on 429 response)
 
 **Tiered limits:** Different limits per plan (free: 100/hr, pro: 10,000/hr). Different limits per endpoint (auth: 5/min, reads: 1000/min, writes: 100/min).
 
+**BAD/GOOD rate limiting patterns:**
+```javascript
+// BAD: Client-side only enforcement (easily bypassed)
+if (requestCount > 100) {
+  alert("Rate limit exceeded");
+  return;
+}
+
+// GOOD: Server-side with Redis sliding window
+const key = `rate:${userId}:${endpoint}`;
+const count = await redis.incr(key);
+if (count === 1) await redis.expire(key, 3600); // 1 hour window
+if (count > 100) {
+  res.set("Retry-After", "3600");
+  return res.status(429).json({ error: "Rate limit exceeded" });
+}
+```
+
 ## OpenAPI Spec (snippet)
 
 ```yaml

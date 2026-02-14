@@ -36,14 +36,14 @@ ENTRYPOINT ["/app"]
 
 ### Node.js Service
 ```dockerfile
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build && npm prune --production
 
-FROM node:22-alpine
+FROM node:20-alpine
 RUN addgroup -g 1001 app && adduser -u 1001 -G app -s /bin/sh -D app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app/dist ./dist
@@ -54,7 +54,7 @@ EXPOSE 3000
 CMD ["node", "dist/index.js"]
 ```
 
-### Python Service
+### Python Service (Multi-stage with uv)
 ```dockerfile
 FROM python:3.12-slim AS builder
 RUN pip install --no-cache-dir uv
@@ -72,14 +72,32 @@ EXPOSE 8000
 CMD ["/app/.venv/bin/python", "-m", "uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
+### Python Service (Traditional pip)
+```dockerfile
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+FROM python:3.12-slim
+RUN groupadd -r app && useradd -r -g app -s /sbin/nologin app
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+USER app
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
 ## Dockerfile Best Practices
 
-1. **Base images:** Use `alpine` or `slim` variants. Use `scratch` or `distroless` for Go/Rust. Never use `latest` tag.
+1. **Base images:** Use `alpine` or `slim` variants. Use `scratch` or `distroless` for Go/Rust. Never use `latest` tag. Current stable versions: `node:20-alpine`, `python:3.12-slim`, `golang:1.23-alpine`.
 2. **Non-root user:** Always run as non-root. Create a dedicated user. `USER 65534` (nobody) for scratch images.
 3. **Layer caching:** Copy dependency files first (`go.mod`, `package.json`), install deps, THEN copy source. This caches the dependency layer.
 4. **No secrets in images:** Never `COPY .env` or `ARG PASSWORD`. Use runtime environment variables or mounted secrets.
 5. **`.dockerignore`:** Always include one. At minimum: `.git`, `node_modules`, `__pycache__`, `.env`, `*.md`, `tests/`.
-6. **Pin versions:** `FROM node:22.5-alpine` not `FROM node:alpine`. Pin in CI, allow minor updates in dev.
+6. **Pin versions:** `FROM node:20.5-alpine` not `FROM node:alpine`. Pin in CI, allow minor updates in dev.
 7. **Single process per container:** Don't run supervisor/systemd. One process, one container.
 8. **Health checks in Dockerfile:**
 ```dockerfile
