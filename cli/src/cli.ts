@@ -14,6 +14,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { cleanCommand } from "./commands/clean.js";
 import { statsCommand } from "./commands/stats.js";
 import { configCommand } from "./commands/config.js";
+import { auditCommand } from "./commands/audit.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -119,6 +120,13 @@ export function createCli(): Command {
     .command("config [action] [value]")
     .description("View or modify arcana configuration")
     .action((action, value) => configCommand(action, value));
+
+  program
+    .command("audit [skill]")
+    .description("Audit skill quality (code examples, BAD/GOOD pairs, structure)")
+    .option("-a, --all", "Audit all installed skills")
+    .option("-j, --json", "Output as JSON")
+    .action((skill, opts) => auditCommand(skill, opts));
 
   return program;
 }
