@@ -50,7 +50,7 @@
     "@clack/prompts": "^1.0.1",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
-    "ora": "^8.2.0",
+    "ora": "^9.3.0",
     "semver": "^7.7.4"
   },
   "devDependencies": {
