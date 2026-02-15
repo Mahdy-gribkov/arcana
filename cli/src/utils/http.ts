@@ -1,5 +1,7 @@
 import https from "node:https";
 
+const agent = new https.Agent({ keepAlive: true, maxSockets: 10 });
+
 export interface HttpResponse {
   body: string;
   statusCode: number;
@@ -116,11 +118,16 @@ function doGet(url: string, timeout: number, redirectCount = 0): Promise<HttpRes
     };
 
     const token = process.env.GITHUB_TOKEN;
-    if (token && url.includes("github")) {
-      headers["Authorization"] = `token ${token}`;
+    if (token) {
+      try {
+        const hostname = new URL(url).hostname;
+        if (hostname === "github.com" || hostname.endsWith(".github.com") || hostname.endsWith(".githubusercontent.com")) {
+          headers["Authorization"] = `token ${token}`;
+        }
+      } catch { /* invalid URL, skip auth */ }
     }
 
-    const req = https.get(url, { headers, timeout }, (res) => {
+    const req = https.get(url, { headers, timeout, agent }, (res) => {
       // Follow redirects (HTTPS only)
       if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
         if (redirectCount >= 5) {

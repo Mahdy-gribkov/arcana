@@ -32,7 +32,7 @@
 # Install globally
 npm i -g @mahdy-gribkov/arcana
 
-# Install all 59 skills
+# Install all 60 skills
 arcana install --all
 
 # Or install specific skills
@@ -156,7 +156,7 @@ All commands support `--json` for machine-readable output and respect `NO_COLOR`
 | Multi-platform init | 7 platforms | 17+ agents | Manual |
 | Skill validation | `validate --all --fix` | No | No |
 | Security scanning | Built-in | No | No |
-| Skill count | 59 curated | Community | DIY |
+| Skill count | 60 curated | Community | DIY |
 
 ## Compatibility
 

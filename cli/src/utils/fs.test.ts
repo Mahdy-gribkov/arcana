@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, existsSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -29,17 +29,10 @@ afterEach(() => {
 
 describe("installSkill", () => {
   it("blocks path traversal (file.path containing ../)", () => {
-    const base = makeTempBase();
+    makeTempBase();
 
-    // Mock getInstallDir to return our test directory
-    vi.mock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getInstallDir: () => base,
-      };
-    });
-
+    // Path traversal is validated before directory resolution,
+    // so this test works without mocking getInstallDir
     const files: SkillFile[] = [
       { path: "../escape/SKILL.md", content: "Malicious content" },
     ];
@@ -49,15 +42,6 @@ describe("installSkill", () => {
 
   it("creates skill directory with correct files", () => {
     const base = makeTempBase();
-
-    // Mock getInstallDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getInstallDir: () => base,
-      };
-    });
 
     const files: SkillFile[] = [
       { path: "SKILL.md", content: "---\nname: test\n---\nBody" },
@@ -77,15 +61,6 @@ describe("installSkill", () => {
 
   it("removes temp dir on failure", () => {
     const base = makeTempBase();
-
-    // Mock getInstallDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getInstallDir: () => base,
-      };
-    });
 
     const files: SkillFile[] = [
       { path: "../invalid", content: "Bad" },
@@ -110,32 +85,12 @@ describe("isSkillInstalled", () => {
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "content", "utf-8");
 
-    // Mock getInstallDir and getSkillDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getInstallDir: () => base,
-        getSkillDir: (name: string) => join(base, name),
-      };
-    });
-
     const result = isSkillInstalled("test-skill");
     expect(result).toBe(true);
   });
 
   it("returns false when directory doesn't exist", () => {
-    const base = makeTempBase();
-
-    // Mock getInstallDir and getSkillDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getInstallDir: () => base,
-        getSkillDir: (name: string) => join(base, name),
-      };
-    });
+    makeTempBase();
 
     const result = isSkillInstalled("nonexistent-skill");
     expect(result).toBe(false);
@@ -144,16 +99,7 @@ describe("isSkillInstalled", () => {
 
 describe("readSkillMeta", () => {
   it("returns null for non-existent skill", () => {
-    const base = makeTempBase();
-
-    // Mock getSkillDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getSkillDir: (name: string) => join(base, name),
-      };
-    });
+    makeTempBase();
 
     const result = readSkillMeta("nonexistent");
     expect(result).toBeNull();
@@ -165,15 +111,6 @@ describe("readSkillMeta", () => {
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, ".arcana-meta.json"), "invalid json{", "utf-8");
 
-    // Mock getSkillDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getSkillDir: (name: string) => join(base, name),
-      };
-    });
-
     const result = readSkillMeta("bad-meta");
     expect(result).toBeNull();
   });
@@ -181,16 +118,7 @@ describe("readSkillMeta", () => {
 
 describe("writeSkillMeta and readSkillMeta", () => {
   it("roundtrip correctly", () => {
-    const base = makeTempBase();
-
-    // Mock getSkillDir
-    vi.doMock("./fs.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./fs.js")>();
-      return {
-        ...actual,
-        getSkillDir: (name: string) => join(base, name),
-      };
-    });
+    makeTempBase();
 
     const meta: SkillMeta = {
       version: "1.0.0",

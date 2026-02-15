@@ -43,25 +43,58 @@ export async function configCommand(
     return;
   }
 
+  // arcana config path
+  if (action === "path") {
+    if (value && !opts?.json) {
+      console.log(ui.warn(`  'path' does not take a value (ignoring "${value}")`));
+    }
+    const configPath = join(homedir(), ".arcana", "config.json");
+    if (opts?.json) {
+      console.log(JSON.stringify({ path: configPath, exists: existsSync(configPath) }));
+    } else {
+      console.log(`  ${configPath}`);
+      console.log(ui.dim(`  ${existsSync(configPath) ? "Custom config" : "Using defaults (file does not exist)"}`));
+      console.log();
+    }
+    return;
+  }
+
   // arcana config reset
   if (action === "reset") {
     const configPath = join(homedir(), ".arcana", "config.json");
-    if (existsSync(configPath)) {
-      rmSync(configPath);
+    const existed = existsSync(configPath);
+    if (existed) {
+      try {
+        rmSync(configPath, { force: true });
+      } catch (err) {
+        if (opts?.json) {
+          console.log(JSON.stringify({ action: "reset", success: false, error: err instanceof Error ? err.message : "Failed to remove config" }));
+        } else {
+          console.log(ui.error(`  Failed to reset config: ${err instanceof Error ? err.message : "unknown error"}`));
+          console.log();
+        }
+        process.exit(1);
+      }
       clearProviderCache();
-      console.log(ui.success("  Config reset to defaults"));
-    } else {
-      console.log(ui.dim("  Already using defaults"));
     }
-    console.log();
+    if (opts?.json) {
+      console.log(JSON.stringify({ action: "reset", success: true, existed }));
+    } else {
+      console.log(existed ? ui.success("  Config reset to defaults") : ui.dim("  Already using defaults"));
+      console.log();
+    }
     return;
   }
 
   // arcana config <key> [value]
   if (!VALID_KEYS.includes(action as ConfigKey)) {
-    console.log(ui.error(`  Unknown config key: ${action}`));
-    console.log(ui.dim(`  Valid keys: ${VALID_KEYS.join(", ")}`));
-    console.log();
+    if (opts?.json) {
+      console.log(JSON.stringify({ error: `Unknown config key: ${action}`, validKeys: [...VALID_KEYS] }));
+    } else {
+      console.log(ui.error(`  Unknown config key: ${action}`));
+      console.log(ui.dim(`  Valid keys: ${VALID_KEYS.join(", ")}`));
+      console.log();
+    }
     process.exit(1);
   }
 
@@ -70,8 +103,12 @@ export async function configCommand(
 
   if (value === undefined) {
     // Get value
-    console.log(`  ${key} = ${config[key]}`);
-    console.log();
+    if (opts?.json) {
+      console.log(JSON.stringify({ action: "get", key, value: config[key] }));
+    } else {
+      console.log(`  ${key} = ${config[key]}`);
+      console.log();
+    }
     return;
   }
 
@@ -97,6 +134,10 @@ export async function configCommand(
   }
   (config as unknown as Record<string, unknown>)[key] = value;
   saveConfig(config);
-  console.log(ui.success(`  Set ${key} = ${value}`));
-  console.log();
+  if (opts?.json) {
+    console.log(JSON.stringify({ action: "set", key, value }));
+  } else {
+    console.log(ui.success(`  Set ${key} = ${value}`));
+    console.log();
+  }
 }

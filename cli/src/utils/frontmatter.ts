@@ -49,9 +49,24 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
         const multilineLines: string[] = [];
         for (let j = i + 1; j < lines.length; j++) {
           const next = lines[j];
-          if (!next) break;
+          if (next === undefined) break;
+          // Empty lines: check if a subsequent indented line follows
+          if (next === "") {
+            let hasMore = false;
+            for (let k = j + 1; k < lines.length; k++) {
+              const peek = lines[k];
+              if (peek === undefined || peek === "") continue;
+              if (peek[0] === " " || peek[0] === "\t") hasMore = true;
+              break;
+            }
+            if (hasMore) {
+              multilineLines.push("");
+              continue;
+            }
+            break;
+          }
           // Continuation lines must be indented
-          if (next.length > 0 && (next[0] === " " || next[0] === "\t")) {
+          if (next[0] === " " || next[0] === "\t") {
             multilineLines.push(next.trim());
           } else {
             break;

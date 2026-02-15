@@ -20,9 +20,13 @@ const DEFAULT_CONFIG: ArcanaConfig = {
   ],
 };
 
+function cloneConfig(config: ArcanaConfig): ArcanaConfig {
+  return { ...config, providers: config.providers.map(p => ({ ...p })) };
+}
+
 export function loadConfig(): ArcanaConfig {
   if (!existsSync(CONFIG_PATH)) {
-    return DEFAULT_CONFIG;
+    return applyEnvOverrides(cloneConfig(DEFAULT_CONFIG));
   }
   try {
     const raw = readFileSync(CONFIG_PATH, "utf-8");
@@ -30,16 +34,17 @@ export function loadConfig(): ArcanaConfig {
     const config: ArcanaConfig = {
       ...DEFAULT_CONFIG,
       ...loaded,
-      providers: loaded.providers ?? DEFAULT_CONFIG.providers,
+      providers: loaded.providers ?? DEFAULT_CONFIG.providers.map(p => ({ ...p })),
     };
     return applyEnvOverrides(config);
   } catch {
     console.error(ui.warn("  Warning: Config file is corrupted, using defaults"));
-    return applyEnvOverrides(DEFAULT_CONFIG);
+    return applyEnvOverrides(cloneConfig(DEFAULT_CONFIG));
   }
 }
 
-function applyEnvOverrides(config: ArcanaConfig): ArcanaConfig {
+function applyEnvOverrides(base: ArcanaConfig): ArcanaConfig {
+  const config = { ...base, providers: base.providers };
   const envInstallDir = process.env.ARCANA_INSTALL_DIR;
   if (envInstallDir) {
     if (!isAbsolute(envInstallDir)) {

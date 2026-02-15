@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
-import { ui, banner } from "../utils/ui.js";
+import { ui, banner, suggest } from "../utils/ui.js";
 import { getInstallDir, getDirSize, listSymlinks } from "../utils/fs.js";
 import type { DoctorCheck } from "../types.js";
 
@@ -103,8 +103,11 @@ function checkSkillValidity(): DoctorCheck {
     const skillMd = join(skillDir, "SKILL.md");
     if (!existsSync(skillMd)) { invalid++; continue; }
     try {
-      const content = readFileSync(skillMd, "utf-8");
-      if (!content.startsWith("---")) invalid++;
+      const fd = openSync(skillMd, "r");
+      const buf = Buffer.alloc(4);
+      readSync(fd, buf, 0, 4, 0);
+      closeSync(fd);
+      if (!buf.toString("utf-8").startsWith("---")) invalid++;
     } catch { invalid++; }
   }
 
@@ -158,4 +161,8 @@ export async function doctorCommand(opts: { json?: boolean } = {}): Promise<void
     console.log(ui.success("  All checks passed"));
   }
   console.log();
+
+  if (fails === 0 && warns === 0) {
+    suggest("arcana list");
+  }
 }

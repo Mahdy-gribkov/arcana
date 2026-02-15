@@ -51,11 +51,15 @@ export function getProvider(name?: string): Provider {
   if (!providerConfig) {
     // If it looks like owner/repo, treat as ad-hoc GitHub provider
     if (providerName.includes("/")) {
+      const cached = providerCache.get(providerName);
+      if (cached) return cached;
       const { owner, repo } = parseProviderSlug(providerName);
-      return new GitHubProvider(owner, repo, {
+      const provider = new GitHubProvider(owner, repo, {
         name: providerName,
         displayName: providerName,
       });
+      providerCache.set(providerName, provider);
+      return provider;
     }
     errorAndExit(
       `Provider "${providerName}" not found`,

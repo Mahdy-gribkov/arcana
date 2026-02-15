@@ -32,6 +32,8 @@ try {
     console.error(`\n  Unexpected error: ${err.message}`);
     if (process.env.DEBUG) console.error(err.stack);
     console.error();
+  } else {
+    console.error(`\n  Unexpected error: ${String(err)}\n`);
   }
   process.exit(1);
 }

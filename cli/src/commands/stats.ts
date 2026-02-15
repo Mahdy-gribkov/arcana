@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { ui, banner, table } from "../utils/ui.js";
@@ -26,15 +26,21 @@ function discoverSessions(): SessionInfo[] {
       const fullPath = join(projDir, file);
       const stat = statSync(fullPath);
 
-      // Count lines without loading entire file into memory
+      // Count newlines by streaming in 64KB chunks (avoids loading entire file)
       let lines = 0;
       try {
-        const buf = readFileSync(fullPath);
-        let lineCount = 0;
-        for (let i = 0; i < buf.length; i++) {
-          if (buf[i] === 10) lineCount++;
+        const fd = openSync(fullPath, "r");
+        try {
+          const chunk = Buffer.alloc(65536);
+          let bytesRead: number;
+          while ((bytesRead = readSync(fd, chunk, 0, chunk.length, null)) > 0) {
+            for (let i = 0; i < bytesRead; i++) {
+              if (chunk[i] === 10) lines++;
+            }
+          }
+        } finally {
+          closeSync(fd);
         }
-        lines = lineCount;
       } catch {
         continue;
       }
@@ -66,8 +72,12 @@ export async function statsCommand(opts: { json?: boolean }): Promise<void> {
   const sessions = discoverSessions();
 
   if (sessions.length === 0) {
-    console.log(ui.dim("  No session data found in ~/.claude/projects/"));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ totalSessions: 0, totalProjects: 0 }));
+    } else {
+      console.log(ui.dim("  No session data found in ~/.claude/projects/"));
+      console.log();
+    }
     return;
   }
 

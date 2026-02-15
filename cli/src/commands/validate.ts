@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getInstallDir } from "../utils/fs.js";
 import { validateSkillDir, fixSkillFrontmatter } from "../utils/frontmatter.js";
+import { atomicWriteSync } from "../utils/atomic.js";
 import { ui, banner } from "../utils/ui.js";
 import type { ValidationResult } from "../types.js";
 
@@ -13,8 +14,12 @@ export async function validateCommand(
 
   const installDir = getInstallDir();
   if (!existsSync(installDir)) {
-    console.log(ui.dim("  No skills installed."));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ results: [] }));
+    } else {
+      console.log(ui.dim("  No skills installed."));
+      console.log();
+    }
     return;
   }
 
@@ -26,10 +31,14 @@ export async function validateCommand(
   } else if (skill) {
     skills = [skill];
   } else {
-    console.log(ui.error("  Specify a skill name or use --all"));
-    console.log(ui.dim("  Usage: arcana validate <skill>"));
-    console.log(ui.dim("         arcana validate --all [--fix]"));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ error: "Specify a skill name or use --all" }));
+    } else {
+      console.log(ui.error("  Specify a skill name or use --all"));
+      console.log(ui.dim("  Usage: arcana validate <skill>"));
+      console.log(ui.dim("         arcana validate --all [--fix]"));
+      console.log();
+    }
     process.exit(1);
   }
 
@@ -51,11 +60,13 @@ export async function validateCommand(
           const content = readFileSync(skillMd, "utf-8");
           const fixed = fixSkillFrontmatter(content);
           if (fixed !== content) {
-            writeFileSync(skillMd, fixed, "utf-8");
+            atomicWriteSync(skillMd, fixed);
             result = validateSkillDir(skillDir, name);
             result.fixed = true;
           }
-        } catch { /* skip unfixable */ }
+        } catch (err) {
+          if (!opts.json) console.log(ui.dim(`    Could not fix: ${err instanceof Error ? err.message : "unknown error"}`));
+        }
       }
     }
 

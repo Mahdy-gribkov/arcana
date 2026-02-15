@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
-import { ui, banner } from "../utils/ui.js";
+import * as p from "@clack/prompts";
+import chalk from "chalk";
+import { renderBanner } from "../utils/help.js";
 
 type ToolName = "claude" | "cursor" | "codex" | "gemini" | "antigravity" | "windsurf" | "aider";
 
@@ -102,10 +104,11 @@ This is a ${proj.type} project using ${proj.lang}.
 }
 
 function antigravityTemplate(proj: ProjectInfo): string {
-  return `# GEMINI.md - ${proj.name}
+  return `# Antigravity - ${proj.name}
 
 ## Project Context
 This is a ${proj.type} project using ${proj.lang}.
+Antigravity workspace: \`.agent/\` (rules, workflows, skills)
 
 ## Project Files
 <!-- List key files and directories so the agent can navigate the codebase -->
@@ -160,21 +163,18 @@ const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); t
 };
 
 export async function initCommand(opts: { tool?: string }): Promise<void> {
-  banner();
+  console.log(renderBanner());
+  console.log();
+  p.intro(chalk.bold("Initialize arcana"));
 
   const cwd = process.cwd();
   const proj = detectProject(cwd);
 
-  console.log(ui.bold("  Project detected"));
-  console.log(ui.dim(`  Name: ${proj.name}`));
-  console.log(ui.dim(`  Type: ${proj.type}`));
-  console.log();
+  p.log.step(`Project detected: ${chalk.cyan(proj.name)} (${proj.type})`);
 
   if (opts.tool && opts.tool !== "all" && !(opts.tool in TOOL_FILES)) {
     const valid = Object.keys(TOOL_FILES).join(", ");
-    console.log(ui.error(`  Unknown tool: ${opts.tool}`));
-    console.log(ui.dim(`  Valid tools: ${valid}`));
-    console.log();
+    p.cancel(`Unknown tool: ${opts.tool}. Valid: ${valid}`);
     process.exit(1);
   }
 
@@ -188,7 +188,7 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
   for (const tool of tools) {
     const entry = TOOL_FILES[tool];
     if (!entry) {
-      console.log(ui.warn(`  Unknown tool: ${tool}`));
+      p.log.warn(`Unknown tool: ${tool}`);
       continue;
     }
 
@@ -196,26 +196,29 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
     const fullPath = join(cwd, relPath);
 
     if (existsSync(fullPath)) {
-      console.log(ui.dim(`  Skip ${relPath} (already exists)`));
+      p.log.info(`Skip ${relPath} (already exists)`);
       skipped++;
       continue;
     }
 
     const content = entry.template(proj);
-    mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, content, "utf-8");
-    console.log(ui.success(`  Created ${relPath}`) + ui.dim(` (${entry.label})`));
+    try {
+      mkdirSync(dirname(fullPath), { recursive: true });
+      writeFileSync(fullPath, content, "utf-8");
+    } catch (err) {
+      p.log.warn(`Failed to create ${relPath}: ${err instanceof Error ? err.message : "unknown error"}`);
+      continue;
+    }
+    p.log.success(`Created ${chalk.cyan(relPath)} (${entry.label})`);
     created++;
   }
 
-  console.log();
   if (created > 0) {
-    console.log(ui.dim(`  ${created} file${created > 1 ? "s" : ""} created. Edit them to match your project.`));
+    p.log.info(`${created} file${created > 1 ? "s" : ""} created. Edit them to match your project.`);
   } else {
-    console.log(ui.dim("  All config files already exist."));
+    p.log.info("All config files already exist.");
   }
-  if (skipped > 0) console.log(ui.dim(`  ${skipped} skipped (already exist)`));
-  console.log();
+  if (skipped > 0) p.log.info(`${skipped} skipped (already exist)`);
 
   // Skill suggestions based on project type
   const SKILL_SUGGESTIONS: Record<string, string[]> = {
@@ -229,12 +232,8 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
 
   const suggestions = SKILL_SUGGESTIONS[proj.type] || ["code-reviewer", "security-review", "codebase-dissection", "testing-strategy"];
 
-  console.log(ui.bold("  Recommended skills"));
-  console.log();
-  for (const skill of suggestions) {
-    console.log(`  ${ui.cyan("arcana install " + skill)}`);
-  }
-  console.log();
-  console.log(ui.dim("  Or install all: arcana install --all"));
-  console.log();
+  const skillList = suggestions.map((s) => `arcana install ${s}`).join("\n");
+  p.note(skillList, "Recommended skills");
+
+  p.outro(`Next: ${chalk.cyan("arcana install <skill>")} or ${chalk.cyan("arcana install --all")}`);
 }

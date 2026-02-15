@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ui, banner, spinner, table, printErrorWithHint } from "../utils/ui.js";
+import { ui, banner, spinner, noopSpinner, table, printErrorWithHint } from "../utils/ui.js";
 import { isSkillInstalled, getInstallDir, readSkillMeta } from "../utils/fs.js";
 import { getProviders } from "../registry.js";
 
@@ -26,8 +26,8 @@ export async function listCommand(opts: {
     for (const provider of providers) provider.clearCache();
   }
 
-  const s = opts.json ? null : spinner("Fetching skills...");
-  s?.start();
+  const s = opts.json ? noopSpinner() : spinner("Fetching skills...");
+  s.start();
 
   try {
     const skills: { name: string; version: string; description: string; source: string; installed: boolean }[] = [];
@@ -45,7 +45,7 @@ export async function listCommand(opts: {
       }
     }
 
-    s?.stop();
+    s.stop();
 
     if (opts.json) {
       console.log(JSON.stringify({ skills }, null, 2));
@@ -69,9 +69,13 @@ export async function listCommand(opts: {
 
     console.log();
   } catch (err) {
-    s?.fail("Failed to fetch skills");
-    printErrorWithHint(err);
-    throw err;
+    if (opts.json) {
+      console.log(JSON.stringify({ error: err instanceof Error ? err.message : "Failed to fetch skills" }));
+      process.exit(1);
+    }
+    s.fail("Failed to fetch skills");
+    printErrorWithHint(err, true);
+    process.exit(1);
   }
 }
 

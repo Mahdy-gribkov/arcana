@@ -4,22 +4,32 @@ import { homedir } from "node:os";
 import { ui, banner } from "../utils/ui.js";
 import { getDirSize, listSymlinks } from "../utils/fs.js";
 
-export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
-  banner();
+export async function cleanCommand(opts: { dryRun?: boolean; json?: boolean }): Promise<void> {
+  if (!opts.json) banner();
 
   const dryRun = opts.dryRun ?? false;
-  if (dryRun) console.log(ui.warn("  DRY RUN - no files will be deleted\n"));
+  if (dryRun && !opts.json) console.log(ui.warn("  DRY RUN - no files will be deleted\n"));
 
   let totalReclaimed = 0;
   let actions = 0;
-  let brokenSymlinks = 0;
-  let staleProjects = 0;
+  const removedSymlinks: string[] = [];
+  const removedProjects: { name: string; sizeMB: string; daysOld: number }[] = [];
+  const removedCacheFiles: string[] = [];
 
   // 1. Clean broken symlinks
+  const failedSymlinks: string[] = [];
   for (const link of listSymlinks().filter(s => s.broken)) {
-    if (!dryRun) rmSync(link.fullPath);
-    console.log(`  ${ui.dim("Remove broken symlink:")} ${link.name}`);
-    brokenSymlinks++;
+    if (!dryRun) {
+      try {
+        rmSync(link.fullPath);
+      } catch (err) {
+        if (!opts.json) console.log(`  ${ui.warn("Could not remove symlink:")} ${link.name} ${ui.dim(`(${err instanceof Error ? err.message : "unknown error"})`)}`);
+        failedSymlinks.push(link.name);
+        continue;
+      }
+    }
+    if (!opts.json) console.log(`  ${ui.dim("Remove broken symlink:")} ${link.name}`);
+    removedSymlinks.push(link.name);
     actions++;
   }
 
@@ -48,11 +58,40 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
         totalReclaimed += size;
         const mb = (size / (1024 * 1024)).toFixed(1);
         if (!dryRun) rmSync(projDir, { recursive: true, force: true });
-        console.log(`  ${ui.dim("Remove stale project data:")} ${entry} ${ui.dim(`(${mb} MB, ${Math.floor(daysOld)}d old)`)}`);
-        staleProjects++;
+        if (!opts.json) console.log(`  ${ui.dim("Remove stale project data:")} ${entry} ${ui.dim(`(${mb} MB, ${Math.floor(daysOld)}d old)`)}`);
+        removedProjects.push({ name: entry, sizeMB: mb, daysOld: Math.floor(daysOld) });
         actions++;
       }
     }
+  }
+
+  // 3. Clean disk cache
+  const cacheDir = join(homedir(), ".arcana", "cache");
+  if (existsSync(cacheDir)) {
+    for (const file of readdirSync(cacheDir)) {
+      if (!dryRun) {
+        try {
+          rmSync(join(cacheDir, file), { force: true });
+        } catch { continue; }
+      }
+      if (!opts.json) console.log(`  ${ui.dim("Remove cached data:")} ${file}`);
+      removedCacheFiles.push(file);
+      actions++;
+    }
+  }
+
+  if (opts.json) {
+    const result: Record<string, unknown> = {
+      dryRun,
+      actions,
+      reclaimedMB: Number((totalReclaimed / (1024 * 1024)).toFixed(1)),
+      removedSymlinks,
+      removedProjects,
+      removedCacheFiles,
+    };
+    if (failedSymlinks.length > 0) result.failedSymlinks = failedSymlinks;
+    console.log(JSON.stringify(result));
+    return;
   }
 
   console.log();
@@ -62,8 +101,8 @@ export async function cleanCommand(opts: { dryRun?: boolean }): Promise<void> {
     console.log(ui.success(`  ${actions} items cleaned. ${verb} ${mb} MB.`));
   } else {
     console.log(ui.dim("  Checked:"));
-    console.log(ui.dim(`  - Broken symlinks in ~/.claude/skills/: ${brokenSymlinks} found`));
-    console.log(ui.dim(`  - Stale project data in ~/.claude/projects/: ${staleProjects} found`));
+    console.log(ui.dim(`  - Broken symlinks in ~/.claude/skills/: ${removedSymlinks.length} found`));
+    console.log(ui.dim(`  - Stale project data in ~/.claude/projects/: ${removedProjects.length} found`));
     console.log(ui.success("  Nothing to clean."));
   }
   console.log();

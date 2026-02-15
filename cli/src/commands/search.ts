@@ -1,4 +1,4 @@
-import { ui, banner, spinner, table, printErrorWithHint } from "../utils/ui.js";
+import { ui, banner, spinner, noopSpinner, table, printErrorWithHint } from "../utils/ui.js";
 import { isSkillInstalled } from "../utils/fs.js";
 import { getProviders } from "../registry.js";
 
@@ -13,8 +13,8 @@ export async function searchCommand(
   if (opts.cache === false) {
     for (const provider of providers) provider.clearCache();
   }
-  const s = opts.json ? null : spinner(`Searching for "${query}"...`);
-  s?.start();
+  const s = opts.json ? noopSpinner() : spinner(`Searching for "${query}"...`);
+  s.start();
 
   const results: { name: string; description: string; source: string; installed: boolean }[] = [];
 
@@ -31,12 +31,16 @@ export async function searchCommand(
       }
     }
   } catch (err) {
-    s?.fail("Search failed due to a network or provider error.");
-    printErrorWithHint(err);
-    throw err;
+    if (opts.json) {
+      console.log(JSON.stringify({ error: err instanceof Error ? err.message : "Search failed" }));
+      process.exit(1);
+    }
+    s.fail("Search failed due to a network or provider error.");
+    printErrorWithHint(err, true);
+    process.exit(1);
   }
 
-  s?.stop();
+  s.stop();
 
   if (opts.json) {
     console.log(JSON.stringify({ query, results }, null, 2));
@@ -50,7 +54,7 @@ export async function searchCommand(
     console.log();
     const rows = results.map((r) => [
       ui.bold(r.name),
-      r.description.slice(0, 60) + (r.description.length > 60 ? "..." : ""),
+      r.description.slice(0, 80) + (r.description.length > 80 ? "..." : ""),
       ui.dim(r.source),
       r.installed ? ui.success("[installed]") : "",
     ]);

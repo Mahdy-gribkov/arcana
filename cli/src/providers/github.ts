@@ -2,8 +2,9 @@ import path from "node:path";
 import { Provider } from "./base.js";
 import type { SkillInfo, SkillFile, MarketplaceData } from "../types.js";
 import { httpGet } from "../utils/http.js";
-
-const VALID_SLUG = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
+import { validateSlug } from "../utils/validate.js";
+import { parallelMap } from "../utils/parallel.js";
+import { readCache, writeCache, clearCacheFile } from "../utils/cache.js";
 
 function levenshtein(a: string, b: string): number {
   const m = a.length;
@@ -26,11 +27,7 @@ interface GitHubTreeItem {
   url: string;
 }
 
-export function validateSlug(value: string, label: string): void {
-  if (!VALID_SLUG.test(value)) {
-    throw new Error(`Invalid ${label}: "${value}". Only letters, numbers, hyphens, dots, underscores allowed.`);
-  }
-}
+export { validateSlug } from "../utils/validate.js";
 
 export class GitHubProvider extends Provider {
   readonly name: string;
@@ -39,6 +36,7 @@ export class GitHubProvider extends Provider {
   private repo: string;
   private branch: string;
   private cache: SkillInfo[] | null = null;
+  private treeCache: GitHubTreeItem[] | null = null;
 
   constructor(
     owner: string,
@@ -48,9 +46,11 @@ export class GitHubProvider extends Provider {
     super();
     validateSlug(owner, "owner");
     validateSlug(repo, "repo");
+    const branch = opts?.branch ?? "main";
+    if (opts?.branch) validateSlug(branch, "branch");
     this.owner = owner;
     this.repo = repo;
-    this.branch = opts?.branch ?? "main";
+    this.branch = branch;
     this.name = opts?.name ?? `${owner}/${repo}`;
     this.displayName = opts?.displayName ?? `${owner}/${repo}`;
   }
@@ -63,8 +63,19 @@ export class GitHubProvider extends Provider {
     }
   }
 
+  private get cacheKey(): string {
+    return `${this.owner}-${this.repo}`;
+  }
+
   async list(): Promise<SkillInfo[]> {
     if (this.cache) return this.cache;
+
+    // Check disk cache
+    const cached = readCache<SkillInfo[]>(this.cacheKey);
+    if (cached) {
+      this.cache = cached;
+      return this.cache;
+    }
 
     const url = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/.claude-plugin/marketplace.json`;
     const { body: raw } = await httpGet(url);
@@ -74,26 +85,50 @@ export class GitHubProvider extends Provider {
       throw new Error(`Invalid marketplace.json in ${this.name}: missing plugins array`);
     }
 
-    this.cache = data.plugins.map((p) => ({
-      name: p.name,
-      description: p.description,
-      version: p.version,
-      source: this.name,
-      repo: `https://github.com/${this.owner}/${this.repo}`,
-    }));
+    this.cache = data.plugins
+      .filter((p) => {
+        if (typeof p.name !== "string" || typeof p.description !== "string" || typeof p.version !== "string") {
+          return false;
+        }
+        return true;
+      })
+      .map((p) => ({
+        name: p.name,
+        description: p.description,
+        version: p.version,
+        source: this.name,
+        repo: `https://github.com/${this.owner}/${this.repo}`,
+      }));
+
+    // Warn about malformed entries
+    const skipped = data.plugins.length - this.cache.length;
+    if (skipped > 0) {
+      console.error(`Warning: ${skipped} malformed ${skipped === 1 ? "entry" : "entries"} in ${this.name}/marketplace.json skipped`);
+    }
+
+    // Write to disk cache
+    writeCache(this.cacheKey, this.cache);
 
     return this.cache;
+  }
+
+  private async getTree(): Promise<GitHubTreeItem[]> {
+    if (this.treeCache) return this.treeCache;
+
+    const treeUrl = `https://api.github.com/repos/${this.owner}/${this.repo}/git/trees/${this.branch}?recursive=1`;
+    const { body: raw } = await httpGet(treeUrl);
+    const tree = this.parseJSON<{ tree: GitHubTreeItem[] }>(raw, `${this.name}/tree`);
+    this.treeCache = tree.tree;
+    return this.treeCache;
   }
 
   async fetch(skillName: string): Promise<SkillFile[]> {
     validateSlug(skillName, "skill name");
 
-    const treeUrl = `https://api.github.com/repos/${this.owner}/${this.repo}/git/trees/${this.branch}?recursive=1`;
-    const { body: raw } = await httpGet(treeUrl);
-    const tree = this.parseJSON<{ tree: GitHubTreeItem[] }>(raw, `${this.name}/tree`);
+    const tree = await this.getTree();
 
     const prefix = `skills/${skillName}/`;
-    const files = tree.tree.filter(
+    const files = tree.filter(
       (item) => item.path.startsWith(prefix) && item.type === "blob"
     );
 
@@ -101,18 +136,21 @@ export class GitHubProvider extends Provider {
       throw new Error(`Skill "${skillName}" not found in ${this.name}`);
     }
 
-    const results: SkillFile[] = [];
-    for (const file of files) {
+    const results = await parallelMap(files, async (file) => {
       const relativePath = file.path.slice(prefix.length);
       if (relativePath.includes("..") || path.isAbsolute(relativePath)) {
-        continue;
+        return null;
       }
       const contentUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/${file.path}`;
-      const { body: content } = await httpGet(contentUrl);
-      results.push({ path: relativePath, content });
-    }
+      try {
+        const { body: content } = await httpGet(contentUrl);
+        return { path: relativePath, content } as SkillFile;
+      } catch (err) {
+        throw new Error(`Failed to fetch file "${relativePath}" for skill "${skillName}": ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }, 6);
 
-    return results;
+    return results.filter((r): r is SkillFile => r !== null);
   }
 
   async search(query: string): Promise<SkillInfo[]> {
@@ -126,10 +164,14 @@ export class GitHubProvider extends Provider {
     if (exact.length > 0) return exact;
 
     // Fuzzy fallback: match skills where Levenshtein distance to name <= 3
+    // Skip fuzzy matching for very short queries (too many false positives)
+    if (q.length < 3) return [];
     return all.filter((s) => levenshtein(q, s.name.toLowerCase()) <= 3);
   }
 
   clearCache(): void {
     this.cache = null;
+    this.treeCache = null;
+    clearCacheFile(this.cacheKey);
   }
 }

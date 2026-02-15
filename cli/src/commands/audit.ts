@@ -20,7 +20,12 @@ export function auditSkill(skillDir: string, skillName: string): AuditResult {
     return { skill: skillName, rating: "WEAK", score: 0, checks: [{ name: "SKILL.md exists", passed: false }] };
   }
 
-  const content = readFileSync(skillMd, "utf-8");
+  let content: string;
+  try {
+    content = readFileSync(skillMd, "utf-8");
+  } catch {
+    return { skill: skillName, rating: "WEAK", score: 0, checks: [{ name: "SKILL.md readable", passed: false }] };
+  }
   const extracted = extractFrontmatter(content);
   const parsed = extracted ? parseFrontmatter(extracted.raw) : null;
   const body = extracted?.body || "";
@@ -91,8 +96,12 @@ export async function auditCommand(
 
   const installDir = getInstallDir();
   if (!existsSync(installDir)) {
-    console.log(ui.dim("  No skills installed."));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ results: [] }));
+    } else {
+      console.log(ui.dim("  No skills installed."));
+      console.log();
+    }
     return;
   }
 
@@ -104,10 +113,14 @@ export async function auditCommand(
   } else if (skill) {
     skills = [skill];
   } else {
-    console.log(ui.error("  Specify a skill name or use --all"));
-    console.log(ui.dim("  Usage: arcana audit <skill>"));
-    console.log(ui.dim("         arcana audit --all [--json]"));
-    console.log();
+    if (opts.json) {
+      console.log(JSON.stringify({ error: "Specify a skill name or use --all" }));
+    } else {
+      console.log(ui.error("  Specify a skill name or use --all"));
+      console.log(ui.dim("  Usage: arcana audit <skill>"));
+      console.log(ui.dim("         arcana audit --all [--json]"));
+      console.log();
+    }
     process.exit(1);
   }
 

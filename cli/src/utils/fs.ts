@@ -36,7 +36,7 @@ export function getDirSize(dir: string): number {
 export function installSkill(skillName: string, files: SkillFile[]): string {
   const installDir = getInstallDir();
   const skillDir = join(installDir, skillName);
-  const tempDir = skillDir + ".installing";
+  const tempDir = `${skillDir}.installing.${process.pid}`;
 
   // Crash recovery: remove leftover temp dir from a previous failed install
   if (existsSync(tempDir)) {

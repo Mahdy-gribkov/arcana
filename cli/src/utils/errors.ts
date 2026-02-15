@@ -8,10 +8,3 @@ export class CliError extends Error {
     this.name = "CliError";
   }
 }
-
-export class ConfigError extends CliError {
-  constructor(message: string) {
-    super(message, "CONFIG_ERROR", 1);
-    this.name = "ConfigError";
-  }
-}

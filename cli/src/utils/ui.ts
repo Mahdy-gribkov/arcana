@@ -27,6 +27,10 @@ export function spinner(text: string): Ora {
   return ora({ text, color: "yellow" });
 }
 
+export function noopSpinner() {
+  return { start: () => {}, stop: () => {}, succeed: (_m: string) => {}, info: (_m: string) => {}, fail: (_m: string) => {}, text: "", message: (_m: string) => {} };
+}
+
 const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
 
 function stripAnsi(str: string): string {
@@ -77,6 +81,22 @@ export function printErrorWithHint(err: unknown, showMessage = false): void {
   }
   const hint = getErrorHint(err);
   if (hint) console.error(ui.dim(`  Hint: ${hint}`));
+
+  // Retry advice for transient errors
+  if (err instanceof Error) {
+    const msg = err.message;
+    const isTransient = NETWORK_PATTERNS.some(p => msg.includes(p)) ||
+      /\b(429|500|502|503|504)\b/.test(msg);
+    if (isTransient) {
+      console.error(ui.dim("  Try again in a moment, or check your connection."));
+    }
+  }
+}
+
+export function suggest(text: string): void {
+  if (!process.stdout.isTTY) return;
+  console.log(ui.dim("  Next: ") + text);
+  console.log();
 }
 
 export function errorAndExit(message: string, hint?: string): never {

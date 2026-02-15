@@ -38,19 +38,24 @@
   },
   "files": [
     "dist/**/*",
-    "package.json"
+    "package.json",
+    "../LICENSE",
+    "../README.md"
   ],
   "type": "module",
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@clack/prompts": "^1.0.1",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
-    "ora": "^8.2.0"
+    "ora": "^8.2.0",
+    "semver": "^7.7.4"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
+    "@types/semver": "^7.7.1",
     "typescript": "^5.7.3",
     "vitest": "^4.0.18"
   }

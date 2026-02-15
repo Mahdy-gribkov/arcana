@@ -1,10 +1,10 @@
-import { createInterface } from "node:readline/promises";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { stdin, stdout } from "node:process";
+import * as p from "@clack/prompts";
+import chalk from "chalk";
 import { getSkillDir } from "../utils/fs.js";
 import { atomicWriteSync } from "../utils/atomic.js";
-import { ui, banner } from "../utils/ui.js";
+import { renderBanner } from "../utils/help.js";
 import { NAME_REGEX } from "../utils/frontmatter.js";
 
 function generateSkillMd(name: string, description: string): string {
@@ -46,62 +46,64 @@ See \`references/\` for detailed documentation.
 }
 
 export async function createCommand(name: string): Promise<void> {
-  banner();
+  console.log(renderBanner());
+  console.log();
+  p.intro(chalk.bold("Create a new skill"));
 
   if (!NAME_REGEX.test(name)) {
-    console.log(ui.error("  Invalid skill name."));
-    console.log(ui.dim("  Use lowercase letters, numbers, and hyphens. Must start with a letter."));
-    console.log(ui.dim("  Example: my-awesome-skill"));
-    console.log();
+    p.cancel("Invalid skill name. Use lowercase letters, numbers, and hyphens. Must start with a letter.");
     process.exit(1);
   }
 
   const skillDir = getSkillDir(name);
   if (existsSync(skillDir)) {
-    console.log(ui.error(`  Skill "${name}" already exists at ${skillDir}`));
-    console.log(ui.dim("  Use a different name or uninstall the existing skill first."));
-    console.log();
+    p.cancel(`Skill "${name}" already exists at ${skillDir}`);
     process.exit(1);
   }
 
-  const rl = createInterface({ input: stdin, output: stdout });
+  p.log.info(`Skill name: ${chalk.cyan(name)}`);
 
-  let description: string;
+  const description = await p.text({
+    message: "Description (80-1024 chars)",
+    placeholder: "A skill that helps with...",
+    validate: (val) => {
+      if (!val || !val.trim()) return "Description is required";
+      if (val.length < 10) return "Too short (minimum 10 chars)";
+    },
+  });
+
+  if (p.isCancel(description)) {
+    p.cancel("Cancelled.");
+    process.exit(0);
+  }
+
+  const desc = (description as string).trim();
+
+  if (desc.length < 80) {
+    p.log.warn(`Description is short (${desc.length} chars). Recommend 80+ for discoverability.`);
+  }
+
+  if (desc.length > 1024) {
+    p.log.warn(`Description is long (${desc.length} chars). Max 1024 for marketplace.`);
+  }
+
   try {
-    description = await rl.question(ui.dim("  Description (80-1024 chars): "));
-  } finally {
-    rl.close();
-  }
+    mkdirSync(skillDir, { recursive: true });
+    atomicWriteSync(join(skillDir, "SKILL.md"), generateSkillMd(name, desc));
 
-  description = description.trim();
-  if (!description) {
-    console.log(ui.error("\n  Description is required."));
-    console.log();
+    const scriptsDir = join(skillDir, "scripts");
+    const referencesDir = join(skillDir, "references");
+    mkdirSync(scriptsDir, { recursive: true });
+    mkdirSync(referencesDir, { recursive: true });
+    atomicWriteSync(join(scriptsDir, ".gitkeep"), "");
+    atomicWriteSync(join(referencesDir, ".gitkeep"), "");
+  } catch (err) {
+    p.cancel(`Failed to create skill: ${err instanceof Error ? err.message : "unknown error"}`);
     process.exit(1);
   }
 
-  if (description.length < 80) {
-    console.log(ui.warn(`\n  Description is short (${description.length} chars). Recommend 80+ for discoverability.`));
-  }
-
-  if (description.length > 1024) {
-    console.log(ui.warn(`\n  Description is long (${description.length} chars). Max 1024 for marketplace.`));
-  }
-
-  mkdirSync(skillDir, { recursive: true });
-  atomicWriteSync(join(skillDir, "SKILL.md"), generateSkillMd(name, description));
-
-  // Create empty directories with .gitkeep files
-  const scriptsDir = join(skillDir, "scripts");
-  const referencesDir = join(skillDir, "references");
-  mkdirSync(scriptsDir, { recursive: true });
-  mkdirSync(referencesDir, { recursive: true });
-  atomicWriteSync(join(scriptsDir, ".gitkeep"), "");
-  atomicWriteSync(join(referencesDir, ".gitkeep"), "");
-
-  console.log();
-  console.log(ui.success(`  Created skill: ${ui.bold(name)}`));
-  console.log(ui.dim(`  Location: ${skillDir}`));
-  console.log(ui.dim("  Edit SKILL.md to add your skill instructions."));
-  console.log();
+  p.log.success(`Created skill: ${chalk.bold(name)}`);
+  p.log.info(`Location: ${skillDir}`);
+  p.log.info("Edit SKILL.md to add your skill instructions.");
+  p.outro(`Next: ${chalk.cyan("arcana validate " + name)}`);
 }

@@ -1,6 +1,89 @@
 # Changelog
 
-## 2.1.0.0 (2026-02-14)
+## 2.1.1 (2026-02-14)
+
+UX overhaul, bug fixes, JSON mode hardening.
+
+### UX Overhaul
+- ASCII ARCANA banner with 6-step gray gradient (256-color ANSI)
+- `@clack/prompts` railroad-track UI for interactive commands (create, install, uninstall, init)
+- First-run welcome guide with clack-styled output
+- Grouped command help (Skills, Environment, Providers, Global Options)
+- Tagline: "Supercharge any AI coding agent."
+
+### Security
+- GITHUB_TOKEN now only sent to verified GitHub hostnames (was substring match, could leak to malicious providers)
+- GitHubProvider branch parameter now validated via `validateSlug()` (was used raw in URLs)
+- Marketplace plugin fields validated before use (missing name/description/version filtered out)
+
+### Bug Fixes
+- `info --json` no longer corrupts output with spinner frames
+- `info --json` now outputs JSON error on "not found" and network failures (was plain text or empty)
+- `list --json` and `search --json` now output JSON error on network failures (was plain text)
+- `update --json` mock spinner objects now have consistent shape (prevents runtime crash)
+- `install --all --json` now reports provider list errors in output (was silently swallowed)
+- `install` guards against empty provider list (was undefined crash)
+- `validate` error output respects `--json` flag
+- `config set/get/reset` now respect `--json` flag
+- Antigravity template no longer identical to Gemini template (mentions `.agent/` workspace)
+- `stats` now streams .jsonl files in 64KB chunks (was loading entire file into memory)
+- Unknown error objects in global handler now produce output (was silent exit)
+- `info`, `list`, `search` no longer print double error messages on network failure
+- Individual file fetch failures now include file path in error message
+- Multiline YAML description parser no longer breaks on empty lines within `|` blocks
+- `providers --add` noop spinner shape now matches all other commands (was missing stop/info/message)
+- Fuzzy search no longer returns false positives for queries shorter than 3 characters
+- `update --all` pre-fetches skill lists instead of N+1 `info()` calls per installed skill
+- Ad-hoc providers (`--provider owner/repo`) now cached across calls
+- `audit --json` without args now outputs JSON error (was plain text)
+- `audit --json` with no skills installed now outputs `{ results: [] }` (was plain text)
+- `audit` no longer crashes on unreadable SKILL.md (returns WEAK rating)
+- `validate --json` with no skills installed now outputs JSON (was plain text)
+- `validate --fix` now uses atomic writes (was raw writeFileSync, crash could corrupt SKILL.md)
+- `validate --fix` now reports write failures instead of silent catch
+- `config --json` with invalid key now outputs JSON error (was plain text)
+- `config reset` rmSync now uses `{ force: true }` with try-catch (was race-prone and unhandled)
+- `uninstall --json` now includes `error` field on "not installed" (was missing)
+- `uninstall --json` rmSync now wrapped in try-catch (Windows file locks caused stack trace)
+- `uninstall --json` now tracks and reports symlink removal errors (was silently swallowed)
+- `create` file writes now wrapped in try-catch (disk full/permissions crashed after interactive prompts)
+- `init` per-tool file writes now wrapped in try-catch with continue (one failure no longer kills all)
+- `install --dry-run --json` now outputs `{ dryRun: true, wouldInstall, files }` (was empty arrays)
+- `update --json` without args now outputs JSON error (was plain text)
+- `update --json` with no skills installed now outputs JSON (was plain text)
+- `update --json` error responses now include `error` field (was missing on 3 paths)
+- `stats --json` with no sessions now outputs `{ totalSessions: 0 }` (was plain text)
+- `stats` file descriptor leak fixed (readSync failure now always closes fd via try-finally)
+- `install --json` single-skill catch now includes `error` field (was discarded)
+- `install --all --json` per-skill failures now include error details in `failedErrors` (was lost)
+- `clean` broken symlink removal now wrapped in try-catch (permission denied no longer crashes mid-cleanup)
+- `clean --json` now reports `failedSymlinks` when removal fails
+- `loadConfig()` now applies env overrides (ARCANA_INSTALL_DIR, ARCANA_DEFAULT_PROVIDER) when no config file exists (was silently ignored)
+- `loadConfig()` no longer mutates shared DEFAULT_CONFIG (callers and env overrides could corrupt module-level constant)
+- `loadConfig()` now returns defensive copies (prevents providers array mutation via addProvider/removeProvider)
+
+### Bloat Removal
+- Extracted `noopSpinner()` to ui.ts (was duplicated in info.ts, update.ts x2, providers.ts)
+- Removed dead `vi.mock` from fs.test.ts (hoisted mock captured undefined variable, had no effect)
+- Removed tautological `isFirstRun` test from help.test.ts (checked `typeof === "boolean"`, always true)
+
+### New Features
+- `providers --json` flag for machine-readable output
+- `clean --json` flag for machine-readable output
+
+### Cleanup
+- Removed dead `ConfigError` export from errors.ts
+- `install` JSON catch block now includes error details
+- `search` description truncation now matches `list` (80 chars)
+- CHANGELOG version format corrected to semver (was 2.1.0.0)
+- npm package now includes LICENSE and README
+- Welcome message no longer hardcodes skill count ("60+ skills" -> "available skills")
+- Removed dead `vi.doMock` calls from fs.test.ts (mocks had no effect on statically imported functions)
+- Removed dead `HttpError` import from providers.ts
+
+---
+
+## 2.1.0 (2026-02-14)
 
 Pre-production review skill, CLI hardening, security audit, 60 skills at PERFECT quality.
 

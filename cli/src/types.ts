@@ -56,6 +56,8 @@ export interface SkillMeta {
   version: string;
   installedAt: string;
   source: string;
+  description?: string;
+  fileCount?: number;
 }
 
 export interface DoctorCheck {
