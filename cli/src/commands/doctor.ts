@@ -83,7 +83,7 @@ function checkDiskUsage(): DoctorCheck {
 
   const mb = (totalSize / (1024 * 1024)).toFixed(1);
   if (totalSize > DISK_USAGE_THRESHOLD_MB * 1024 * 1024) {
-    return { name: "Disk usage", status: "warn", message: `${mb} MB across ${dirCount} projects (threshold: ${DISK_USAGE_THRESHOLD_MB} MB)`, fix: "Run: arcana clean" };
+    return { name: "Disk usage", status: "warn", message: `${mb} MB across ${dirCount} projects (threshold: ${DISK_USAGE_THRESHOLD_MB} MB). Try: arcana clean` };
   }
   return { name: "Disk usage", status: "pass", message: `${mb} MB across ${dirCount} projects` };
 }
@@ -95,35 +95,54 @@ function checkSkillValidity(): DoctorCheck {
   }
 
   let total = 0;
-  let invalid = 0;
+  const missingMd: string[] = [];
+  const badFrontmatter: string[] = [];
+
   for (const entry of readdirSync(dir)) {
     const skillDir = join(dir, entry);
     if (!statSync(skillDir).isDirectory()) continue;
     total++;
     const skillMd = join(skillDir, "SKILL.md");
-    if (!existsSync(skillMd)) { invalid++; continue; }
+    if (!existsSync(skillMd)) { missingMd.push(entry); continue; }
     try {
       const fd = openSync(skillMd, "r");
       const buf = Buffer.alloc(4);
       readSync(fd, buf, 0, 4, 0);
       closeSync(fd);
-      if (!buf.toString("utf-8").startsWith("---")) invalid++;
-    } catch { invalid++; }
+      if (!buf.toString("utf-8").startsWith("---")) badFrontmatter.push(entry);
+    } catch { badFrontmatter.push(entry); }
   }
 
-  if (invalid > 0) {
-    return { name: "Skill health", status: "warn", message: `${invalid}/${total} skills have issues`, fix: "Run: arcana validate --all --fix" };
+  const invalid = missingMd.length + badFrontmatter.length;
+  if (invalid === 0) {
+    return { name: "Skill health", status: "pass", message: `${total} skills valid` };
   }
-  return { name: "Skill health", status: "pass", message: `${total} skills valid` };
+
+  // Pick the most useful fix command
+  const details: string[] = [];
+  let fix: string;
+  if (missingMd.length > 0) {
+    details.push(`${missingMd.length} missing SKILL.md (${missingMd.join(", ")})`);
+    fix = missingMd.length === 1
+      ? `Run: arcana uninstall ${missingMd[0]}`
+      : `Run: arcana uninstall ${missingMd.join(" ")}`;
+  } else {
+    fix = "Run: arcana validate --all --fix";
+  }
+  if (badFrontmatter.length > 0) {
+    details.push(`${badFrontmatter.length} invalid frontmatter`);
+  }
+
+  return {
+    name: "Skill health",
+    status: "warn",
+    message: `${invalid}/${total} skills have issues (${details.join("; ")})`,
+    fix,
+  };
 }
 
-export async function doctorCommand(opts: { json?: boolean } = {}): Promise<void> {
-  if (!opts.json) {
-    banner();
-    console.log(ui.bold("  Environment Health Check\n"));
-  }
-
-  const checks: DoctorCheck[] = [
+export function runDoctorChecks(): DoctorCheck[] {
+  return [
     checkNodeVersion(),
     checkInstallDir(),
     checkBrokenSymlinks(),
@@ -132,6 +151,15 @@ export async function doctorCommand(opts: { json?: boolean } = {}): Promise<void
     checkArcanaConfig(),
     checkDiskUsage(),
   ];
+}
+
+export async function doctorCommand(opts: { json?: boolean } = {}): Promise<void> {
+  if (!opts.json) {
+    banner();
+    console.log(ui.bold("  Environment Health Check\n"));
+  }
+
+  const checks = runDoctorChecks();
 
   if (opts.json) {
     console.log(JSON.stringify({ checks: checks.map((c) => ({ name: c.name, status: c.status, message: c.message, ...(c.fix ? { fix: c.fix } : {}) })) }, null, 2));

@@ -41,7 +41,7 @@ export function createCli(): Command {
     if (cmd) {
       console.error();
       console.error(ui.error("  Error: ") + `unknown command '${cmd}'`);
-      const commands = ["list", "install", "info", "search", "providers", "create", "validate", "update", "uninstall", "init", "doctor", "clean", "stats", "config", "audit"];
+      const commands = ["list", "install", "info", "search", "providers", "create", "validate", "update", "uninstall", "init", "doctor", "clean", "stats", "config", "audit", "scan"];
       const match = commands.find(c => c.startsWith(cmd.slice(0, 3)));
       if (match) {
         console.error(ui.dim(`  Did you mean '${match}'?`));
@@ -51,11 +51,19 @@ export function createCli(): Command {
       process.exit(1);
     }
     const { isFirstRun, showWelcome, markInitialized, buildCustomHelp } = await import("./utils/help.js");
+
+    // Non-TTY (CI, pipes): print static help
+    if (!process.stdout.isTTY) {
+      console.log(buildCustomHelp(pkg.version));
+      return;
+    }
+
     if (isFirstRun()) {
       showWelcome(pkg.version);
       markInitialized();
     }
-    console.log(buildCustomHelp(pkg.version));
+    const { showInteractiveMenu } = await import("./interactive.js");
+    await showInteractiveMenu(pkg.version);
   });
 
   program
@@ -217,6 +225,17 @@ export function createCli(): Command {
     .action(async (skill, opts) => {
       const { auditCommand } = await import("./commands/audit.js");
       return auditCommand(skill, opts);
+    });
+
+  program
+    .command("scan [skill]")
+    .description("Scan skills for security threats (prompt injection, malware, credential theft)")
+    .option("-a, --all", "Scan all installed skills")
+    .option("-j, --json", "Output as JSON")
+    .addHelpText("after", "\nExamples:\n  arcana scan code-reviewer\n  arcana scan --all\n  arcana scan --all --json")
+    .action(async (skill, opts) => {
+      const { scanCommand } = await import("./commands/scan.js");
+      return scanCommand(skill, opts);
     });
 
   return program;

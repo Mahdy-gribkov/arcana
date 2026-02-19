@@ -12,7 +12,7 @@ interface ProjectInfo {
   lang: string;
 }
 
-function detectProject(cwd: string): ProjectInfo {
+export function detectProject(cwd: string): ProjectInfo {
   const name = basename(cwd);
   if (existsSync(join(cwd, "go.mod"))) return { name, type: "Go", lang: "go" };
   if (existsSync(join(cwd, "Cargo.toml"))) return { name, type: "Rust", lang: "rust" };
@@ -162,6 +162,17 @@ const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); t
   aider: { path: ".aider.conf.yml", template: aiderTemplate, label: "Aider" },
 };
 
+export const SKILL_SUGGESTIONS: Record<string, string[]> = {
+  "Go": ["golang-pro", "go-linter-configuration", "testing-strategy", "security-review"],
+  "Rust": ["rust-best-practices", "testing-strategy", "security-review"],
+  "Python": ["python-best-practices", "testing-strategy", "security-review"],
+  "Next.js": ["typescript", "typescript-advanced", "frontend-design", "performance-optimization", "security-review"],
+  "React": ["typescript", "frontend-design", "frontend-code-review", "testing-strategy"],
+  "Node.js": ["typescript", "npm-package", "testing-strategy", "security-review"],
+};
+
+export const SKILL_SUGGESTIONS_DEFAULT = ["code-reviewer", "security-review", "codebase-dissection", "testing-strategy"];
+
 export async function initCommand(opts: { tool?: string }): Promise<void> {
   console.log(renderBanner());
   console.log();
@@ -220,17 +231,7 @@ export async function initCommand(opts: { tool?: string }): Promise<void> {
   }
   if (skipped > 0) p.log.info(`${skipped} skipped (already exist)`);
 
-  // Skill suggestions based on project type
-  const SKILL_SUGGESTIONS: Record<string, string[]> = {
-    "Go": ["golang-pro", "go-linter-configuration", "testing-strategy", "security-review"],
-    "Rust": ["rust-best-practices", "testing-strategy", "security-review"],
-    "Python": ["python-best-practices", "testing-strategy", "security-review"],
-    "Next.js": ["typescript", "typescript-advanced", "frontend-design", "performance-optimization", "security-review"],
-    "React": ["typescript", "frontend-design", "frontend-code-review", "testing-strategy"],
-    "Node.js": ["typescript", "npm-package", "testing-strategy", "security-review"],
-  };
-
-  const suggestions = SKILL_SUGGESTIONS[proj.type] || ["code-reviewer", "security-review", "codebase-dissection", "testing-strategy"];
+  const suggestions = SKILL_SUGGESTIONS[proj.type] || SKILL_SUGGESTIONS_DEFAULT;
 
   const skillList = suggestions.map((s) => `arcana install ${s}`).join("\n");
   p.note(skillList, "Recommended skills");

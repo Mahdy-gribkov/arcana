@@ -7,6 +7,45 @@ import { getProvider, getProviders } from "../registry.js";
 import { loadConfig } from "../utils/config.js";
 import { renderBanner } from "../utils/help.js";
 import { validateSlug } from "../utils/validate.js";
+import { scanSkillContent, formatScanResults } from "../utils/scanner.js";
+import type { SkillFile } from "../types.js";
+
+/**
+ * Scan fetched skill files for security threats before installing.
+ * Returns true if install should proceed, false to block.
+ */
+function preInstallScan(skillName: string, files: SkillFile[], force?: boolean): boolean {
+  const skillMd = files.find(f => f.path.endsWith("SKILL.md"));
+  if (!skillMd) return true;
+
+  const issues = scanSkillContent(skillMd.content);
+  if (issues.length === 0) return true;
+
+  const critical = issues.filter(i => i.level === "critical");
+  const high = issues.filter(i => i.level === "high");
+
+  if (critical.length > 0) {
+    p.log.error(`Security scan blocked ${chalk.bold(skillName)}:`);
+    for (const issue of critical) {
+      p.log.error(`  [CRIT] ${issue.category}: ${issue.detail} (line ${issue.line})`);
+    }
+    for (const issue of high) {
+      p.log.warn(`  [HIGH] ${issue.category}: ${issue.detail} (line ${issue.line})`);
+    }
+    if (!force) {
+      p.log.info(chalk.dim("Use --force to install anyway (not recommended)."));
+      return false;
+    }
+    p.log.warn("Installing despite security issues (--force).");
+  } else if (high.length > 0) {
+    p.log.warn(`Security warnings for ${chalk.bold(skillName)}:`);
+    for (const issue of high) {
+      p.log.warn(`  [HIGH] ${issue.category}: ${issue.detail} (line ${issue.line})`);
+    }
+  }
+
+  return true;
+}
 
 export async function installCommand(
   skillNames: string[],
@@ -82,8 +121,14 @@ async function installOneInteractive(skillName: string, provider: Provider, dryR
 
   try {
     const files = await provider.fetch(skillName);
+    spin.stop("Fetched.");
 
-    spin.message(`Installing ${chalk.bold(skillName)}...`);
+    if (!preInstallScan(skillName, files, force)) {
+      process.exit(1);
+    }
+
+    const spin2 = p.spinner();
+    spin2.start(`Installing ${chalk.bold(skillName)}...`);
     const dir = installSkill(skillName, files);
 
     const remote = await provider.info(skillName);
@@ -95,11 +140,11 @@ async function installOneInteractive(skillName: string, provider: Provider, dryR
       fileCount: files.length,
     });
 
-    spin.stop(`Installed ${chalk.bold(skillName)} (${files.length} files)`);
+    spin2.stop(`Installed ${chalk.bold(skillName)} (${files.length} files)`);
     p.log.info(`Location: ${dir}`);
     p.outro(`Next: ${chalk.cyan("arcana validate " + skillName)}`);
   } catch (err) {
-    spin.stop(`Failed to install ${skillName}`);
+    p.log.error(`Failed to install ${skillName}`);
     printErrorWithHint(err, true);
     process.exit(1);
   }
@@ -155,6 +200,11 @@ async function installMultipleInteractive(skillNames: string[], provider: Provid
 
     try {
       const files = await provider.fetch(skillName);
+
+      if (!preInstallScan(skillName, files, force)) {
+        failedList.push(skillName);
+        continue;
+      }
 
       installSkill(skillName, files);
       const remote = await provider.info(skillName);
@@ -224,6 +274,12 @@ async function installAllInteractive(providers: Provider[], dryRun?: boolean, fo
       try {
         spin.message(`Installing ${chalk.bold(skill.name)} (${i + 1}/${total}) from ${provider.name}...`);
         const files = await provider.fetch(skill.name);
+
+        if (!preInstallScan(skill.name, files, force)) {
+          failedList.push(skill.name);
+          continue;
+        }
+
         installSkill(skill.name, files);
         writeSkillMeta(skill.name, {
           version: skill.version,
@@ -303,6 +359,13 @@ async function installJson(
         }
         try {
           const files = await provider.fetch(skill.name);
+
+          if (!preInstallScan(skill.name, files, opts.force)) {
+            failedList.push(skill.name);
+            failedErrors[skill.name] = "Blocked by security scan";
+            continue;
+          }
+
           installSkill(skill.name, files);
           writeSkillMeta(skill.name, {
             version: skill.version,
@@ -345,6 +408,11 @@ async function installJson(
         }
 
         const files = await provider.fetch(skillName);
+
+        if (!preInstallScan(skillName, files, opts.force)) {
+          failedList.push(skillName);
+          continue;
+        }
 
         installSkill(skillName, files);
         const remote = await provider.info(skillName);

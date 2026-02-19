@@ -5,15 +5,20 @@ import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { ui } from "./ui.js";
 
-const RESET = "\x1b[0m";
+const noColor = !!(process.env.NO_COLOR || process.env.TERM === "dumb");
 
-const GRAYS = [
-  "\x1b[38;5;250m",
-  "\x1b[38;5;248m",
-  "\x1b[38;5;245m",
-  "\x1b[38;5;243m",
-  "\x1b[38;5;240m",
-  "\x1b[38;5;238m",
+function amberShade(hex: string, text: string): string {
+  if (noColor) return text;
+  return chalk.hex(hex)(text);
+}
+
+const AMBER_HEXES = [
+  "#e8a84c",  // bright amber
+  "#d4943a",  // brand amber
+  "#c0842f",  // mid
+  "#a87228",  // darker
+  "#8f6020",  // dimmer
+  "#755019",  // darkest
 ];
 
 const BANNER_LINES = [
@@ -25,13 +30,11 @@ const BANNER_LINES = [
   "╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝",
 ];
 
-const noColor = !!(process.env.NO_COLOR || process.env.TERM === "dumb");
-
 export function renderBanner(): string {
   if (noColor) {
     return BANNER_LINES.map((l) => `  ${l}`).join("\n");
   }
-  return BANNER_LINES.map((line, i) => `  ${GRAYS[i]}${line}${RESET}`).join("\n");
+  return BANNER_LINES.map((line, i) => `  ${amberShade(AMBER_HEXES[i]!, line)}`).join("\n");
 }
 
 interface CommandEntry {
@@ -124,12 +127,13 @@ export function markInitialized(): void {
 }
 
 export function showWelcome(version: string): void {
+  console.log();
   console.log(renderBanner());
   console.log();
-  p.intro(chalk.bold(`arcana v${version}`));
-  p.log.step("Get started:");
-  p.log.info(`Run ${chalk.cyan("arcana doctor")} to check your environment`);
-  p.log.info(`Run ${chalk.cyan("arcana list")} to browse available skills`);
-  p.log.info(`Run ${chalk.cyan("arcana install <skill>")} to install your first skill`);
-  p.outro("Happy coding!");
+  p.intro(chalk.hex("#d4943a").bold(`arcana v${version}`));
+  p.log.step(chalk.bold("Welcome! Arcana is a universal skill manager for AI coding agents."));
+  p.log.info("Skills extend your agent (Claude, Cursor, Codex, etc.) with expert knowledge.");
+  p.log.info("They install on-demand and only load when relevant, not all at once.");
+  console.log();
 }
+

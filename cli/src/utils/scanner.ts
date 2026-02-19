@@ -1,0 +1,227 @@
+/**
+ * Content security scanner for SKILL.md files.
+ * Detects threat patterns from the Snyk ToxicSkills taxonomy:
+ * prompt injection, malicious code, credential exfiltration,
+ * suspicious downloads, and unverifiable dependencies.
+ */
+
+export interface ScanIssue {
+  level: "critical" | "high" | "medium";
+  category: string;
+  detail: string;
+  line: number;
+  context: string;
+}
+
+interface Pattern {
+  level: "critical" | "high" | "medium";
+  category: string;
+  detail: string;
+  regex: RegExp;
+}
+
+// ---------------------------------------------------------------------------
+// Threat patterns (deterministic, no LLM required)
+// Based on real attack techniques documented in Snyk ToxicSkills Feb 2026
+// ---------------------------------------------------------------------------
+
+const PATTERNS: Pattern[] = [
+  // CRITICAL: Malicious code execution
+  {
+    level: "critical",
+    category: "Malicious code",
+    detail: "Base64 encoded command piped to shell",
+    regex: /(?:echo|printf)\s+["']?[A-Za-z0-9+/=]{20,}["']?\s*\|\s*base64\s+-d/i,
+  },
+  {
+    level: "critical",
+    category: "Malicious code",
+    detail: "Curl/wget piped to shell interpreter",
+    regex: /(?:curl|wget)\s+[^\n|]*\|\s*(?:bash|sh|zsh|source|python|node)\b/i,
+  },
+  {
+    level: "critical",
+    category: "Malicious code",
+    detail: "Eval executing dynamic content",
+    regex: /\beval\s+\$\(/,
+  },
+  {
+    level: "critical",
+    category: "Malicious code",
+    detail: "Password-protected archive extraction",
+    regex: /unzip\s+-[Pp]\s/,
+  },
+
+  // CRITICAL: Suspicious downloads
+  {
+    level: "critical",
+    category: "Suspicious download",
+    detail: "Download and execute binary",
+    regex: /(?:curl|wget)\s+[^\n]*&&\s*chmod\s+\+x\b/i,
+  },
+
+  // HIGH: Credential exfiltration
+  {
+    level: "high",
+    category: "Credential theft",
+    detail: "Reading sensitive credential files",
+    regex: /cat\s+~\/\.(?:aws|ssh|gnupg|docker|kube|npmrc|netrc|gitconfig)/,
+  },
+  {
+    level: "high",
+    category: "Credential theft",
+    detail: "Exfiltrating environment variables via network",
+    regex: /\$(?:AWS_|GITHUB_|NPM_|OPENAI_|ANTHROPIC_|HF_|HUGGING)[A-Z_]*[^\n]*(?:curl|wget|fetch|http)/i,
+  },
+  {
+    level: "high",
+    category: "Credential theft",
+    detail: "Piping credentials through base64 encoding",
+    regex: /(?:credentials|\.env|\.ssh|\.aws)[^\n]*\|\s*base64/i,
+  },
+
+  // HIGH: Prompt injection
+  {
+    level: "high",
+    category: "Prompt injection",
+    detail: "Instruction override attempt",
+    regex: /ignore\s+(?:all\s+)?(?:previous|above|prior|earlier)\s+instructions/i,
+  },
+  {
+    level: "high",
+    category: "Prompt injection",
+    detail: "Developer/admin mode jailbreak",
+    regex: /you\s+are\s+(?:now\s+)?in\s+(?:developer|admin|debug|unrestricted)\s+mode/i,
+  },
+  {
+    level: "high",
+    category: "Prompt injection",
+    detail: "DAN-style jailbreak attempt",
+    regex: /\bDAN\b[^.]*\bDo\s+Anything\s+Now\b/i,
+  },
+  {
+    level: "high",
+    category: "Prompt injection",
+    detail: "Security warning suppression",
+    regex: /security\s+warnings?\s+are\s+(?:test\s+)?artifacts?/i,
+  },
+  {
+    level: "high",
+    category: "Prompt injection",
+    detail: "System message impersonation",
+    regex: /\[system\]|\<system\>|SYSTEM:\s+/,
+  },
+
+  // HIGH: Hardcoded secrets
+  {
+    level: "high",
+    category: "Secret detected",
+    detail: "Hardcoded API key pattern",
+    regex: /(?:sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9-]{20}|xox[bpsar]-[a-zA-Z0-9-]{10,})/,
+  },
+  {
+    level: "high",
+    category: "Secret detected",
+    detail: "Private key material",
+    regex: /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----/,
+  },
+
+  // MEDIUM: Suspicious system modification
+  {
+    level: "medium",
+    category: "System modification",
+    detail: "Systemd service manipulation",
+    regex: /systemctl\s+(?:enable|start|daemon-reload|mask)/,
+  },
+  {
+    level: "medium",
+    category: "System modification",
+    detail: "Crontab modification",
+    regex: /crontab\s+-[elr]/,
+  },
+  {
+    level: "medium",
+    category: "System modification",
+    detail: "Modifying shell profile for persistence",
+    regex: /(?:>>|>\s*)~\/\.(?:bashrc|zshrc|profile|bash_profile)/,
+  },
+
+  // MEDIUM: Unverifiable dependencies
+  {
+    level: "medium",
+    category: "Unverifiable dependency",
+    detail: "chmod +x on downloaded file",
+    regex: /chmod\s+\+x\s+\S+\s*&&\s*\.\/\S+/,
+  },
+  {
+    level: "medium",
+    category: "Unverifiable dependency",
+    detail: "Dynamic remote instruction loading",
+    regex: /(?:curl|wget|fetch)\s+[^\n]*(?:instructions|config|setup)\.(?:md|txt|sh|yaml)/i,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Scanner
+// ---------------------------------------------------------------------------
+
+/**
+ * Scan SKILL.md content for security threats.
+ * Returns an array of issues sorted by severity (critical first).
+ */
+export function scanSkillContent(content: string): ScanIssue[] {
+  const issues: ScanIssue[] = [];
+  const lines = content.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    for (const pattern of PATTERNS) {
+      if (pattern.regex.test(line)) {
+        issues.push({
+          level: pattern.level,
+          category: pattern.category,
+          detail: pattern.detail,
+          line: i + 1,
+          context: line.trim().slice(0, 120),
+        });
+      }
+    }
+  }
+
+  // Sort: critical first, then high, then medium
+  const order = { critical: 0, high: 1, medium: 2 };
+  issues.sort((a, b) => order[a.level] - order[b.level]);
+
+  return issues;
+}
+
+/**
+ * Quick check: does this content have any critical issues?
+ */
+export function hasCriticalIssues(content: string): boolean {
+  return scanSkillContent(content).some(i => i.level === "critical");
+}
+
+/**
+ * Format scan results for display.
+ */
+export function formatScanResults(skillName: string, issues: ScanIssue[]): string {
+  if (issues.length === 0) return `  [OK] ${skillName}`;
+
+  const lines: string[] = [];
+  const critical = issues.filter(i => i.level === "critical").length;
+  const high = issues.filter(i => i.level === "high").length;
+  const medium = issues.filter(i => i.level === "medium").length;
+
+  const tag = critical > 0 ? "[!!]" : high > 0 ? "[!!]" : "[i]";
+  lines.push(`  ${tag} ${skillName} (${issues.length} issue${issues.length !== 1 ? "s" : ""})`);
+
+  for (const issue of issues) {
+    const icon = issue.level === "critical" ? "CRIT"
+      : issue.level === "high" ? "HIGH"
+      : "MED";
+    lines.push(`    [${icon}] ${issue.category}: ${issue.detail} (line ${issue.line})`);
+  }
+
+  return lines.join("\n");
+}

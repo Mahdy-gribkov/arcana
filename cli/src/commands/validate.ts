@@ -4,6 +4,7 @@ import { getInstallDir } from "../utils/fs.js";
 import { validateSkillDir, fixSkillFrontmatter } from "../utils/frontmatter.js";
 import { atomicWriteSync } from "../utils/atomic.js";
 import { ui, banner } from "../utils/ui.js";
+import { scanSkillContent } from "../utils/scanner.js";
 import type { ValidationResult } from "../types.js";
 
 export async function validateCommand(
@@ -68,6 +69,24 @@ export async function validateCommand(
           if (!opts.json) console.log(ui.dim(`    Could not fix: ${err instanceof Error ? err.message : "unknown error"}`));
         }
       }
+    }
+
+    // Security scan
+    const skillMdPath = join(skillDir, "SKILL.md");
+    if (existsSync(skillMdPath)) {
+      try {
+        const content = readFileSync(skillMdPath, "utf-8");
+        const scanIssues = scanSkillContent(content);
+        for (const issue of scanIssues) {
+          const msg = `Security: ${issue.category} - ${issue.detail} (line ${issue.line})`;
+          if (issue.level === "critical") {
+            result.errors.push(msg);
+            result.valid = false;
+          } else {
+            result.warnings.push(msg);
+          }
+        }
+      } catch { /* skip if unreadable */ }
     }
 
     results.push(result);

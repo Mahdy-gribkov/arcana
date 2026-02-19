@@ -126,7 +126,7 @@ async function uninstallMultipleInteractive(skillNames: string[], skipConfirm?: 
   p.outro(`Next: ${chalk.cyan("arcana list --installed")}`);
 }
 
-function removeSymlinksFor(skillName: string): number {
+export function removeSymlinksFor(skillName: string): number {
   let removed = 0;
   const expectedTarget = resolve(getSkillDir(skillName));
   for (const link of listSymlinks()) {
