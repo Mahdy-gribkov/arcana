@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { ui, banner } from "../utils/ui.js";
 import { getDirSize, listSymlinks } from "../utils/fs.js";
+import { clearHistory } from "../utils/history.js";
 
 export async function cleanCommand(opts: { dryRun?: boolean; json?: boolean }): Promise<void> {
   if (!opts.json) banner();
@@ -65,7 +66,12 @@ export async function cleanCommand(opts: { dryRun?: boolean; json?: boolean }): 
     }
   }
 
-  // 3. Clean disk cache
+  // 3. Clear action history
+  if (!dryRun) clearHistory();
+  if (!opts.json) console.log(`  ${ui.dim("Clear action history")}`);
+  actions++;
+
+  // 4. Clean disk cache
   const cacheDir = join(homedir(), ".arcana", "cache");
   if (existsSync(cacheDir)) {
     for (const file of readdirSync(cacheDir)) {

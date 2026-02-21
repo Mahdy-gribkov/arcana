@@ -18,6 +18,8 @@ import { loadConfig } from "./utils/config.js";
 import { runDoctorChecks } from "./commands/doctor.js";
 import { removeSymlinksFor } from "./commands/uninstall.js";
 import type { SkillInfo } from "./types.js";
+import { appendHistory } from "./utils/history.js";
+import { clearProviderCache } from "./registry.js";
 
 const AMBER = chalk.hex("#d4943a");
 
@@ -67,6 +69,7 @@ const SKILL_CATEGORIES: Record<string, string[]> = {
 // ---------------------------------------------------------------------------
 
 function cancelAndExit(): never {
+  clearProviderCache();
   p.cancel("Goodbye.");
   process.exit(0);
 }
@@ -154,8 +157,10 @@ async function doInstall(skillName: string, providerName: string): Promise<boole
       source: providerName,
       description: remote?.description,
       fileCount: files.length,
+      sizeBytes: files.reduce((s2, f) => s2 + f.content.length, 0),
     });
     s.stop(`Installed ${chalk.bold(skillName)} (${files.length} files)`);
+    appendHistory("install", skillName);
     return true;
   } catch (err) {
     s.stop(`Failed to install ${skillName}`);
@@ -182,6 +187,7 @@ async function doBatchInstall(names: string[], providerName: string): Promise<nu
         source: providerName,
         description: remote?.description,
         fileCount: files.length,
+        sizeBytes: files.reduce((s2, f) => s2 + f.content.length, 0),
       });
       installed++;
     } catch (err) {
@@ -200,6 +206,7 @@ function doUninstall(skillName: string): boolean {
   try {
     rmSync(skillDir, { recursive: true, force: true });
     removeSymlinksFor(skillName);
+    appendHistory("uninstall", skillName);
     return true;
   } catch {
     return false;
@@ -395,6 +402,7 @@ async function searchFlow(allSkills: SkillInfo[], providerName: string): Promise
       return;
     }
     s.stop(`${results.length} result${results.length !== 1 ? "s" : ""}`);
+    appendHistory("search", query as string);
 
     if (results.length === 0) {
       p.log.info("No skills matched. Try a different query.");
@@ -505,16 +513,28 @@ async function manageInstalled(allSkills: SkillInfo[], providerName: string): Pr
       return;
     }
 
-    const options = names.map(name => {
-      const meta = readSkillMeta(name);
-      const ver = meta ? `v${meta.version}` : "";
-      const date = meta?.installedAt ? new Date(meta.installedAt).toLocaleDateString() : "";
-      return {
-        value: name,
-        label: name,
-        hint: `${ver}${date ? `  ${date}` : ""}`,
-      };
-    });
+    // Group installed skills by category
+    const groups: { cat: string; skills: string[] }[] = [];
+    const categorized = new Set<string>();
+
+    for (const [cat, catSkills] of Object.entries(SKILL_CATEGORIES)) {
+      const installed = catSkills.filter(s => names.includes(s));
+      if (installed.length > 0) {
+        groups.push({ cat, skills: installed });
+        installed.forEach(s => categorized.add(s));
+      }
+    }
+
+    const uncategorized = names.filter(s => !categorized.has(s));
+    if (uncategorized.length > 0) {
+      groups.push({ cat: "Other", skills: uncategorized });
+    }
+
+    const options = groups.map(g => ({
+      value: g.cat,
+      label: g.cat,
+      hint: `${g.skills.length} installed`,
+    }));
 
     const picked = await p.select({
       message: `Installed skills (${names.length})`,
@@ -528,16 +548,47 @@ async function manageInstalled(allSkills: SkillInfo[], providerName: string): Pr
     handleCancel(picked);
 
     if (picked === "__back") return;
+    if (picked === "__update") { await updateAll(providerName); continue; }
+    if (picked === "__bulk_uninstall") { await bulkUninstall(names); continue; }
 
-    if (picked === "__update") {
-      await updateAll(providerName);
-      continue;
+    const group = groups.find(g => g.cat === picked);
+    if (group) {
+      await installedCategoryList(group.cat, group.skills, allSkills, providerName);
+    }
+  }
+}
+
+async function installedCategoryList(
+  categoryName: string,
+  installedNames: string[],
+  allSkills: SkillInfo[],
+  providerName: string,
+): Promise<void> {
+  while (true) {
+    const stillInstalled = installedNames.filter(s => isSkillInstalled(s));
+    if (stillInstalled.length === 0) {
+      p.log.info("No skills remaining in this category.");
+      return;
     }
 
-    if (picked === "__bulk_uninstall") {
-      await bulkUninstall(names);
-      continue;
-    }
+    const options = stillInstalled.map(name => {
+      const meta = readSkillMeta(name);
+      const ver = meta ? `v${meta.version}` : "";
+      const date = meta?.installedAt ? new Date(meta.installedAt).toLocaleDateString() : "";
+      return {
+        value: name,
+        label: name,
+        hint: `${ver}${date ? `  ${date}` : ""}`,
+      };
+    });
+
+    const picked = await p.select({
+      message: `${categoryName} (${stillInstalled.length} installed)`,
+      options: [...options, { value: "__back", label: "Back" }],
+    });
+    handleCancel(picked);
+
+    if (picked === "__back") return;
 
     const result = await skillDetailFlow(picked as string, allSkills, providerName);
     if (result === "menu") return;
@@ -549,6 +600,7 @@ async function bulkUninstall(installedNames: string[]): Promise<void> {
     message: "Select skills to uninstall",
     options: installedNames.map(name => ({ value: name, label: name })),
     required: false,
+    maxItems: 15,
   });
   handleCancel(selected);
 
@@ -637,6 +689,7 @@ async function updateAll(providerName: string): Promise<void> {
         source: providerName,
         description: remote.description,
         fileCount: files.length,
+        sizeBytes: files.reduce((s2, f) => s2 + f.content.length, 0),
       });
       updated++;
     } catch (err) {
@@ -797,7 +850,8 @@ export async function showInteractiveMenu(version: string): Promise<void> {
     });
 
     if (p.isCancel(selected) || selected === "exit") {
-      console.log();
+      clearProviderCache();
+      p.outro(chalk.dim("Until next time."));
       return;
     }
 

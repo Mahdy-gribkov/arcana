@@ -78,13 +78,6 @@ class User {
   getFullAddress(): string {
     return `${this.street}, ${this.city}, ${this.zipCode}, ${this.country}`;
   }
-
-  updateAddress(street: string, city: string, zipCode: string, country: string) {
-    this.street = street;
-    this.city = city;
-    this.zipCode = zipCode;
-    this.country = country;
-  }
 }
 ```
 
@@ -109,10 +102,6 @@ class User {
   name: string;
   email: string;
   address: Address;
-
-  updateAddress(address: Address) {
-    this.address = address;
-  }
 }
 ```
 
@@ -142,145 +131,45 @@ function getDiscountedPrice(price: number, discount: number): number {
 }
 ```
 
-**Why:** The method `applyDiscount` is called once and its body is obvious. Inlining simplifies.
+## Replace Conditional with Polymorphism
 
-## Inline Variable
-
-**When:** A variable is used once and the expression is self-explanatory.
-
-**BEFORE:**
-
-```typescript
-function isEligibleForDiscount(user: User): boolean {
-  const hasPremiumAccount = user.accountType === 'premium';
-  return hasPremiumAccount;
-}
-```
-
-**AFTER:**
-
-```typescript
-function isEligibleForDiscount(user: User): boolean {
-  return user.accountType === 'premium';
-}
-```
-
-**Why:** The variable name does not add clarity. The expression is self-documenting.
-
-## Move Method
-
-**When:** A method uses data from another class more than its own class.
+**When:** A switch or if/else chain selects behavior based on type.
 
 **BEFORE:**
 
 ```typescript
 class Order {
-  items: OrderItem[];
-  customerId: number;
+  type: 'standard' | 'express' | 'overnight';
 
-  calculateShipping(customer: Customer): number {
-    if (customer.isPremium) {
-      return 0;
-    }
-    return this.items.length * 5;
+  calculateShipping(): number {
+    if (this.type === 'standard') return 5;
+    else if (this.type === 'express') return 15;
+    else if (this.type === 'overnight') return 30;
   }
-}
-
-class Customer {
-  id: number;
-  isPremium: boolean;
 }
 ```
 
 **AFTER:**
 
 ```typescript
-class Order {
-  items: OrderItem[];
-  customerId: number;
-
-  calculateShipping(customer: Customer): number {
-    return customer.calculateShippingCost(this.items.length);
-  }
+interface Order {
+  calculateShipping(): number;
 }
 
-class Customer {
-  id: number;
-  isPremium: boolean;
+class StandardOrder implements Order {
+  calculateShipping(): number { return 5; }
+}
 
-  calculateShippingCost(itemCount: number): number {
-    if (this.isPremium) {
-      return 0;
-    }
-    return itemCount * 5;
-  }
+class ExpressOrder implements Order {
+  calculateShipping(): number { return 15; }
+}
+
+class OvernightOrder implements Order {
+  calculateShipping(): number { return 30; }
 }
 ```
 
-**Why:** Shipping logic depends on customer data. Moving it to Customer class follows the data.
-
-## Rename
-
-**When:** The current name is misleading, abbreviated, or outdated.
-
-**BEFORE:**
-
-```typescript
-function calc(x: number, y: number): number {
-  return x * y * 0.08;
-}
-
-const res = calc(100, 2);
-```
-
-**AFTER:**
-
-```typescript
-function calculateSalesTax(price: number, quantity: number): number {
-  return price * quantity * 0.08;
-}
-
-const salesTax = calculateSalesTax(100, 2);
-```
-
-**Why:** Descriptive names make intent clear. Abbreviations obscure meaning.
-
-## Dead Code Elimination
-
-**When:** Code is unreachable, unused, or commented out.
-
-**BEFORE:**
-
-```typescript
-function processPayment(amount: number, method: string) {
-  if (method === 'credit') {
-    chargeCreditCard(amount);
-  } else if (method === 'paypal') {
-    chargePayPal(amount);
-  }
-  // else if (method === 'bitcoin') {
-  //   chargeBitcoin(amount);
-  // }
-}
-
-function chargeBitcoin(amount: number) {
-  // No longer supported
-}
-```
-
-**AFTER:**
-
-```typescript
-function processPayment(amount: number, method: string) {
-  if (method === 'credit') {
-    chargeCreditCard(amount);
-  } else if (method === 'paypal') {
-    chargePayPal(amount);
-  }
-}
-```
-
-**Why:** Dead code clutters the codebase. Version control preserves history.
+**Why:** Adding new order types requires no changes to existing code. Open/closed principle.
 
 ## Dependency Injection
 
@@ -315,221 +204,23 @@ class OrderService {
   }
 }
 
-// Usage
-const db = new Database();
-const emailer = new EmailService();
-const orderService = new OrderService(db, emailer);
-
 // Testing
-const mockDb = new MockDatabase();
-const mockEmailer = new MockEmailService();
 const testService = new OrderService(mockDb, mockEmailer);
 ```
 
 **Why:** Dependencies are explicit. Testing with mocks is trivial.
 
-## Replace Conditional with Polymorphism
-
-**When:** A switch or if/else chain selects behavior based on type.
-
-**BEFORE:**
-
-```typescript
-class Order {
-  type: 'standard' | 'express' | 'overnight';
-
-  calculateShipping(): number {
-    if (this.type === 'standard') {
-      return 5;
-    } else if (this.type === 'express') {
-      return 15;
-    } else if (this.type === 'overnight') {
-      return 30;
-    }
-  }
-}
-```
-
-**AFTER:**
-
-```typescript
-interface Order {
-  calculateShipping(): number;
-}
-
-class StandardOrder implements Order {
-  calculateShipping(): number {
-    return 5;
-  }
-}
-
-class ExpressOrder implements Order {
-  calculateShipping(): number {
-    return 15;
-  }
-}
-
-class OvernightOrder implements Order {
-  calculateShipping(): number {
-    return 30;
-  }
-}
-```
-
-**Why:** Adding new order types requires no changes to existing code. Open/closed principle.
-
-## Extract Variable
-
-**When:** An expression is complex or used multiple times.
-
-**BEFORE:**
-
-```typescript
-if (order.items.length > 10 && order.total > 1000 && order.customer.isPremium) {
-  applyDiscount(order);
-}
-```
-
-**AFTER:**
-
-```typescript
-const isLargeOrder = order.items.length > 10;
-const isHighValue = order.total > 1000;
-const isPremiumCustomer = order.customer.isPremium;
-
-if (isLargeOrder && isHighValue && isPremiumCustomer) {
-  applyDiscount(order);
-}
-```
-
-**Why:** Named variables document intent. Complex conditions become readable.
-
 ## Code Smells
 
-### Long Method
+Catalog of common code smells: Long Method, Large Class, Feature Envy, Data Clumps, Primitive Obsession, Divergent Change, Shotgun Surgery, and more. Each with detection criteria and fix patterns.
 
-**Smell:** Method exceeds 20-30 lines.
-
-**Fix:** Extract methods for logical blocks.
-
-### Large Class
-
-**Smell:** Class exceeds 200-300 lines or has multiple responsibilities.
-
-**Fix:** Extract classes for cohesive groups of fields and methods.
-
-### Feature Envy
-
-**Smell:** A method uses another class's data more than its own.
-
-**BEFORE:**
-
-```typescript
-class Report {
-  generateSummary(user: User): string {
-    return `${user.name} has ${user.orders.length} orders totaling $${user.getTotalSpent()}`;
-  }
-}
-```
-
-**AFTER:**
-
-```typescript
-class User {
-  getSummary(): string {
-    return `${this.name} has ${this.orders.length} orders totaling $${this.getTotalSpent()}`;
-  }
-}
-```
-
-### Data Clumps
-
-**Smell:** Groups of variables appear together repeatedly.
-
-**BEFORE:**
-
-```typescript
-function createUser(name: string, street: string, city: string, zipCode: string) {
-  // ...
-}
-
-function updateUser(id: number, name: string, street: string, city: string, zipCode: string) {
-  // ...
-}
-```
-
-**AFTER:**
-
-```typescript
-interface Address {
-  street: string;
-  city: string;
-  zipCode: string;
-}
-
-function createUser(name: string, address: Address) {
-  // ...
-}
-
-function updateUser(id: number, name: string, address: Address) {
-  // ...
-}
-```
-
-### Primitive Obsession
-
-**Smell:** Using strings or numbers where a domain type is clearer.
-
-**BEFORE:**
-
-```typescript
-function sendEmail(email: string) {
-  if (!email.includes('@')) {
-    throw new Error('Invalid email');
-  }
-  // ...
-}
-```
-
-**AFTER:**
-
-```typescript
-class Email {
-  constructor(private value: string) {
-    if (!value.includes('@')) {
-      throw new Error('Invalid email');
-    }
-  }
-
-  toString(): string {
-    return this.value;
-  }
-}
-
-function sendEmail(email: Email) {
-  // Email is guaranteed valid
-}
-```
+See references/code-smells.md for the full catalog with BAD/GOOD examples.
 
 ## Technical Debt Prioritization
 
-### Scoring Formula
+Score = (Frequency x Blast Radius) / Effort. Prioritize highest-score items first. Includes scoring table, priority tiers (P0-P3), and a tracking template.
 
-Score = (Frequency × Blast Radius) / Effort
-
-- **Frequency:** How often is this code touched? (1-10)
-- **Blast Radius:** How many users/features are affected if it breaks? (1-10)
-- **Effort:** How long to fix? (1-10)
-
-**Example:**
-
-| Debt Item | Frequency | Blast Radius | Effort | Score |
-|-----------|-----------|--------------|--------|-------|
-| Refactor auth logic | 8 | 10 | 5 | 16 |
-| Remove unused util | 1 | 1 | 1 | 1 |
-| Split large class | 5 | 5 | 3 | 8.3 |
-
-Fix highest-score items first.
+See references/tech-debt-prioritization.md for the full scoring system, workflow, and register template.
 
 ## Refactoring Workflow
 

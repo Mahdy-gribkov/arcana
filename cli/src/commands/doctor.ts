@@ -141,12 +141,41 @@ function checkSkillValidity(): DoctorCheck {
   };
 }
 
+function checkSkillSizes(): DoctorCheck {
+  const dir = getInstallDir();
+  if (!existsSync(dir)) {
+    return { name: "Skill sizes", status: "pass", message: "No skills to check" };
+  }
+
+  const large: { name: string; kb: number }[] = [];
+  for (const entry of readdirSync(dir)) {
+    const skillDir = join(dir, entry);
+    if (!statSync(skillDir).isDirectory()) continue;
+    const size = getDirSize(skillDir);
+    const kb = size / 1024;
+    if (kb > 50) large.push({ name: entry, kb });
+  }
+
+  if (large.length === 0) {
+    return { name: "Skill sizes", status: "pass", message: "All skills under 50 KB" };
+  }
+
+  large.sort((a, b) => b.kb - a.kb);
+  const top3 = large.slice(0, 3).map(s => `${s.name} (${s.kb.toFixed(0)} KB)`).join(", ");
+  return {
+    name: "Skill sizes",
+    status: "warn",
+    message: `${large.length} skills >50 KB (high token usage). Largest: ${top3}`,
+  };
+}
+
 export function runDoctorChecks(): DoctorCheck[] {
   return [
     checkNodeVersion(),
     checkInstallDir(),
     checkBrokenSymlinks(),
     checkSkillValidity(),
+    checkSkillSizes(),
     checkGitConfig(),
     checkArcanaConfig(),
     checkDiskUsage(),

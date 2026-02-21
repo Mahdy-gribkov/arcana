@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.2.0 (2026-02-22)
+
+Final polish release. All 60 skills enriched, CLI memory-aware, session history added.
+
+### CLI Improvements
+- **Skill size awareness**: Install now reports file size and estimated token count. Warns at >50KB.
+- **Doctor check for token budget**: New health check warns about large skills (>50KB) with top-3 offenders listed.
+- **Session history**: Ring buffer of last 50 actions at `~/.arcana/history.json`. Visible in `arcana stats`.
+- **Interactive exit cleanup**: Provider cache cleared on exit, `p.outro()` farewell message.
+- **Manage installed**: Category-based navigation instead of flat 60-item list.
+- **Bulk uninstall**: `maxItems: 15` for scroll pagination on long lists.
+
+### Skills Completion
+- **7 oversized skills split**: doc-generation, refactoring-patterns, typescript, container-security, cost-optimization, fullstack-developer, dependency-audit. All SKILL.md files now under 300 lines with content moved to `references/`.
+- **25 bare skills enriched**: Every skill now has at least one `references/*.md` file with practical configs, checklists, or templates.
+- **Audit results**: 54 PERFECT, 6 STRONG, 0 ADEQUATE, 0 WEAK (excluding test artifacts).
+
+### Housekeeping
+- `arcana clean` now clears action history
+- `arcana stats` shows recent activity from session history
+- `.gitignore` updated for research notes and promo artifacts
+
 ## 2.1.1 (2026-02-14)
 
 UX overhaul, bug fixes, JSON mode hardening.

@@ -32,5 +32,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Research / personal notes
+snyk_research.txt
+
+# Promo
+promo/package-lock.json
+
 # Claude
 .claude/
