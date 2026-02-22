@@ -1,5 +1,5 @@
 {
-  "name": "@mahdy-gribkov/arcana",
+  "name": "@sporesec/arcana",
   "version": "2.2.0",
   "description": "Universal AI development CLI. Skills, scaffolding, diagnostics, and analytics for every agent.",
   "bin": {
@@ -29,12 +29,12 @@
   "author": "Mahdy Gribkov",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mahdy-gribkov/arcana.git",
+    "url": "git+https://github.com/medy-gribkov/arcana.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/mahdy-gribkov/arcana",
+  "homepage": "https://github.com/medy-gribkov/arcana",
   "bugs": {
-    "url": "https://github.com/mahdy-gribkov/arcana/issues"
+    "url": "https://github.com/medy-gribkov/arcana/issues"
   },
   "files": [
     "dist/**/*",
