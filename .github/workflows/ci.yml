@@ -1,25 +1,22 @@
-name: Validate Skills
+name: CI
 
 on:
-  pull_request:
-    branches: [master]
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "0 6 * * 1"
 
 jobs:
-  validate:
+  validate-skills:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.12"]
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
 
       - name: Validate SKILL.md files
         run: |
@@ -27,19 +24,16 @@ jobs:
             skill_name=$(basename "$skill_dir")
             echo "=== Validating $skill_name ==="
 
-            # Check SKILL.md exists
             if [ ! -f "$skill_dir/SKILL.md" ]; then
               echo "ERROR: $skill_name missing SKILL.md"
               exit 1
             fi
 
-            # Check frontmatter
             if ! head -1 "$skill_dir/SKILL.md" | grep -q "^---"; then
               echo "ERROR: $skill_name SKILL.md missing frontmatter"
               exit 1
             fi
 
-            # Check line count
             lines=$(wc -l < "$skill_dir/SKILL.md")
             if [ "$lines" -gt 150 ]; then
               echo "WARNING: $skill_name SKILL.md has $lines lines (>150)"
@@ -48,7 +42,7 @@ jobs:
             echo "PASSED: $skill_name"
           done
 
-      - name: Run tests
+      - name: Run skill tests
         run: |
           for skill_dir in skills/*/; do
             skill_name=$(basename "$skill_dir")
@@ -77,19 +71,30 @@ jobs:
               skill_md = os.path.join(skill_dir, 'SKILL.md')
               if not os.path.isfile(skill_md):
                   continue
-              with open(skill_md, 'r') as f:
+              with open(skill_md, 'r', encoding='utf-8') as f:
                   content = f.read()
-              # Extract frontmatter
               if not content.startswith('---'):
                   print(f'ERROR: {skill_name} missing frontmatter')
                   errors += 1
                   continue
               end = content.index('---', 3)
               fm = content[3:end].strip()
+              lines = fm.split('\n')
               desc = ''
-              for line in fm.split('\n'):
+              for i, line in enumerate(lines):
                   if line.startswith('description:'):
-                      desc = line.split(':', 1)[1].strip().strip('\"').strip(\"'\")
+                      value = line.split(':', 1)[1].strip().strip('\"').strip(\"'\")
+                      if value in ('>', '|', '>-', '|-'):
+                          # YAML multiline scalar - collect indented continuation lines
+                          desc_parts = []
+                          for next_line in lines[i+1:]:
+                              if next_line and (next_line[0] == ' ' or next_line[0] == '\t'):
+                                  desc_parts.append(next_line.strip())
+                              else:
+                                  break
+                          desc = ' '.join(desc_parts)
+                      else:
+                          desc = value
                       break
               if not desc:
                   print(f'ERROR: {skill_name} has no description')
@@ -119,7 +124,7 @@ jobs:
 
       - name: Validate marketplace.json
         run: |
-          python -c "
+          python3 -c "
           import json, sys, os
           data = json.load(open('.claude-plugin/marketplace.json'))
           assert 'name' in data, 'Missing name'
@@ -138,3 +143,46 @@ jobs:
 
           print(f'Valid: {len(data[\"plugins\"])} plugins, no duplicates')
           "
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run security scan
+        run: bash scripts/security-scan.sh
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: cli
+      - run: npm audit --audit-level=moderate
+        working-directory: cli
+
+  cli-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci
+        working-directory: cli
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: cli
+      - name: Unit tests
+        run: npm test
+        working-directory: cli
+      - name: Smoke test
+        run: |
+          npx tsc
+          node dist/index.js --version
+          node dist/index.js --help
+        working-directory: cli

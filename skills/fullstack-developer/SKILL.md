@@ -75,35 +75,16 @@ src/
 ## Best Practices
 
 ### Frontend
-1. **Component Design**
-   - Keep components small and focused
-   - Use composition over prop drilling
-   - Implement proper TypeScript types
-   - Handle loading and error states
-
-2. **Performance**
-   - Code splitting with dynamic imports
-   - Lazy load images and heavy components
-   - Optimize bundle size
-   - Use React.memo for expensive renders
-
-3. **State Management**
-   - Server state with React Query
-   - Client state with Context or Zustand
-   - Form state with react-hook-form
-   - Avoid prop drilling
+1. **Component Design** - Keep components small, use composition over prop drilling, implement proper TypeScript types, handle loading and error states.
+2. **Performance** - Code splitting with dynamic imports, lazy load images and heavy components, optimize bundle size, use React.memo for expensive renders.
+3. **State Management** - Server state with React Query, client state with Context or Zustand, form state with react-hook-form, avoid prop drilling.
 
 ### Backend
-1. **API Design**
-   - RESTful naming conventions
-   - Proper HTTP status codes
-   - Consistent error responses
-   - API versioning
+1. **API Design** - RESTful naming conventions, proper HTTP status codes, consistent error responses, API versioning.
 
 2. **Error Handling Pattern**
 
 ```typescript
-// API error handling with consistent status codes
 class AppError extends Error {
   constructor(
     public statusCode: number,
@@ -114,7 +95,6 @@ class AppError extends Error {
   }
 }
 
-// Error handler middleware
 function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
@@ -122,214 +102,26 @@ function errorHandler(err: Error, req: Request, res: Response, next: NextFunctio
       code: err.code,
     });
   }
-
-  // Unexpected errors
   console.error('Unexpected error:', err);
-  return res.status(500).json({
-    error: 'Internal server error',
-  });
+  return res.status(500).json({ error: 'Internal server error' });
 }
-
-// Usage in routes
-app.get('/api/users/:id', async (req, res, next) => {
-  try {
-    const user = await db.user.findUnique({ where: { id: req.params.id } });
-    if (!user) {
-      throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
-    }
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
-});
 ```
 
 **Status codes:**
-- `200` - Success with body
-- `201` - Created (POST success)
-- `204` - Success with no body (DELETE)
-- `400` - Bad request (validation error)
-- `401` - Unauthorized (not authenticated)
-- `403` - Forbidden (authenticated but not authorized)
-- `404` - Not found
-- `409` - Conflict (duplicate resource)
-- `422` - Unprocessable (semantic error)
-- `429` - Too many requests
-- `500` - Internal server error
+- `200` Success with body, `201` Created, `204` No body (DELETE)
+- `400` Bad request, `401` Unauthorized, `403` Forbidden
+- `404` Not found, `409` Conflict, `422` Unprocessable, `429` Too many requests
+- `500` Internal server error
 
-3. **Authentication Flow (JWT)**
+3. **Authentication Flow (JWT)** - Access tokens (15 min), refresh tokens (7 days), middleware protection. See references/auth-patterns.md for complete implementation.
 
-```typescript
-// Login endpoint
-app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+4. **Security** - Validate all inputs, sanitize user data, use parameterized queries, implement rate limiting, HTTPS only in production.
 
-  const user = await db.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw new AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS');
-  }
-
-  // Create access token (15 min) and refresh token (7 days)
-  const accessToken = jwt.sign(
-    { userId: user.id, email: user.email },
-    process.env.JWT_SECRET!,
-    { expiresIn: '15m' }
-  );
-
-  const refreshToken = jwt.sign(
-    { userId: user.id },
-    process.env.REFRESH_SECRET!,
-    { expiresIn: '7d' }
-  );
-
-  // Store refresh token hash in database
-  await db.refreshToken.create({
-    data: {
-      userId: user.id,
-      token: await bcrypt.hash(refreshToken, 10),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  });
-
-  res.json({ accessToken, refreshToken });
-});
-
-// Auth middleware
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    throw new AppError(401, 'No token provided', 'NO_TOKEN');
-  }
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string;
-      email: string;
-    };
-    req.user = payload;
-    next();
-  } catch (error) {
-    throw new AppError(401, 'Invalid token', 'INVALID_TOKEN');
-  }
-}
-
-// Protected route
-app.get('/api/profile', requireAuth, async (req, res) => {
-  const user = await db.user.findUnique({ where: { id: req.user.userId } });
-  res.json(user);
-});
-
-// Token refresh
-app.post('/api/auth/refresh', async (req, res) => {
-  const { refreshToken } = req.body;
-
-  const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET!) as { userId: string };
-
-  const stored = await db.refreshToken.findFirst({
-    where: { userId: payload.userId, expiresAt: { gt: new Date() } },
-  });
-
-  if (!stored || !(await bcrypt.compare(refreshToken, stored.token))) {
-    throw new AppError(401, 'Invalid refresh token', 'INVALID_REFRESH');
-  }
-
-  const accessToken = jwt.sign(
-    { userId: payload.userId },
-    process.env.JWT_SECRET!,
-    { expiresIn: '15m' }
-  );
-
-  res.json({ accessToken });
-});
-```
-
-4. **Security**
-   - Validate all inputs
-   - Sanitize user data
-   - Use parameterized queries
-   - Implement rate limiting
-   - HTTPS only in production
-
-5. **Database**
-   - Index frequently queried fields
-   - Avoid N+1 queries
-   - Use transactions for related operations
-   - Connection pooling
+5. **Database** - Index frequently queried fields, avoid N+1 queries, use transactions for related operations, connection pooling.
 
 ## Code Examples
 
-### Next.js API Route with TypeScript
-```typescript
-// app/api/users/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/lib/db';
-
-const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(2),
-});
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const data = createUserSchema.parse(body);
-    
-    const user = await db.user.create({
-      data: {
-        email: data.email,
-        name: data.name,
-      },
-    });
-    
-    return NextResponse.json(user, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### React Component with Hooks
-```typescript
-// components/UserProfile.tsx
-'use client';
-
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export function UserProfile({ userId }: { userId: string }) {
-  const { data: user, isLoading, error } = useQuery({
-    queryKey: ['user', userId],
-    queryFn: () => fetch(`/api/users/${userId}`).then(r => r.json()),
-  });
-  
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading user</div>;
-  
-  return (
-    <div className="p-4 border rounded-lg">
-      <h2 className="text-xl font-bold">{user.name}</h2>
-      <p className="text-gray-600">{user.email}</p>
-    </div>
-  );
-}
-```
+Next.js API routes with Zod validation, React components with React Query, Prisma blog post CRUD. See references/nextjs-examples.md for complete code.
 
 ## Output Format
 
@@ -339,95 +131,3 @@ When building features, provide:
 3. **Dependencies** - Required npm packages
 4. **Environment variables** - If needed
 5. **Setup instructions** - How to run/deploy
-
-## Example Response
-
-**User Request:** "Create a simple blog post API"
-
-**Response:**
-
-```typescript
-// lib/db.ts
-import { PrismaClient } from '@prisma/client';
-
-export const db = new PrismaClient();
-```
-
-```typescript
-// app/api/posts/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/lib/db';
-
-const createPostSchema = z.object({
-  title: z.string().min(1).max(200),
-  content: z.string().min(1),
-  authorId: z.string(),
-});
-
-export async function GET() {
-  const posts = await db.post.findMany({
-    include: { author: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  
-  return NextResponse.json(posts);
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const data = createPostSchema.parse(body);
-    
-    const post = await db.post.create({
-      data,
-      include: { author: true },
-    });
-    
-    return NextResponse.json(post, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to create post' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-**Dependencies:**
-```bash
-npm install @prisma/client zod
-npm install -D prisma
-```
-
-**Prisma Schema:**
-```prisma
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-```
-
-**Setup:**
-```bash
-# Initialize Prisma
-npx prisma init
-
-# Run migrations
-npx prisma migrate dev --name init
-
-# Generate Prisma client
-npx prisma generate
-```

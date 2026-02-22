@@ -2,6 +2,7 @@ import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { ui, banner, table } from "../utils/ui.js";
+import { readHistory } from "../utils/history.js";
 
 interface SessionInfo {
   project: string;
@@ -143,6 +144,19 @@ export async function statsCommand(opts: { json?: boolean }): Promise<void> {
       `${count} sessions`,
     ]);
     table(projRows);
+  }
+
+  const history = readHistory();
+  if (history.length > 0) {
+    console.log();
+    console.log(ui.bold("  Recent Arcana Activity\n"));
+    const recent = history.slice(-5).reverse();
+    const histRows = recent.map(e => [
+      ui.dim(new Date(e.timestamp).toLocaleDateString()),
+      e.action,
+      e.target ?? "",
+    ]);
+    table(histRows);
   }
 
   console.log();

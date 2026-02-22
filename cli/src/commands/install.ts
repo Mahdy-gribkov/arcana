@@ -138,9 +138,14 @@ async function installOneInteractive(skillName: string, provider: Provider, dryR
       source: provider.name,
       description: remote?.description,
       fileCount: files.length,
+      sizeBytes: files.reduce((s, f) => s + f.content.length, 0),
     });
 
-    spin2.stop(`Installed ${chalk.bold(skillName)} (${files.length} files)`);
+    const sizeKB = files.reduce((s, f) => s + f.content.length, 0) / 1024;
+    spin2.stop(`Installed ${chalk.bold(skillName)} (${files.length} files, ${sizeKB.toFixed(1)} KB)`);
+    if (sizeKB > 50) {
+      p.log.warn(`Large skill (${sizeKB.toFixed(0)} KB, ~${Math.round(sizeKB * 3)} tokens). May use significant context.`);
+    }
     p.log.info(`Location: ${dir}`);
     p.outro(`Next: ${chalk.cyan("arcana validate " + skillName)}`);
   } catch (err) {
@@ -214,6 +219,7 @@ async function installMultipleInteractive(skillNames: string[], provider: Provid
         source: provider.name,
         description: remote?.description,
         fileCount: files.length,
+        sizeBytes: files.reduce((s, f) => s + f.content.length, 0),
       });
       installedList.push(skillName);
     } catch (err) {
@@ -287,6 +293,7 @@ async function installAllInteractive(providers: Provider[], dryRun?: boolean, fo
           source: provider.name,
           description: skill.description,
           fileCount: files.length,
+          sizeBytes: files.reduce((s, f) => s + f.content.length, 0),
         });
         installedList.push(skill.name);
       } catch (err) {
@@ -373,6 +380,7 @@ async function installJson(
             source: provider.name,
             description: skill.description,
             fileCount: files.length,
+            sizeBytes: files.reduce((s, f) => s + f.content.length, 0),
           });
           installedList.push(skill.name);
         } catch (err) {
@@ -422,6 +430,7 @@ async function installJson(
           source: provider.name,
           description: remote?.description,
           fileCount: files.length,
+          sizeBytes: files.reduce((s, f) => s + f.content.length, 0),
         });
         installedList.push(skillName);
       } catch (err) {

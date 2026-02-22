@@ -58,6 +58,7 @@ export interface SkillMeta {
   source: string;
   description?: string;
   fileCount?: number;
+  sizeBytes?: number;
 }
 
 export interface DoctorCheck {
