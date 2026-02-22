@@ -48,7 +48,7 @@ export function installSkill(skillName: string, files: SkillFile[]): string {
   try {
     for (const file of files) {
       // Reject paths containing .. before resolving
-      if (file.path.includes("..") || file.path.includes("~")) {
+      if (file.path.includes("..") || file.path.includes("~") || file.path.startsWith("\\\\") || file.path.startsWith("//")) {
         throw new Error(`Path traversal blocked: ${file.path}`);
       }
       const filePath = resolve(tempDir, file.path);

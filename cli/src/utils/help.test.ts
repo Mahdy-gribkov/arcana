@@ -65,7 +65,7 @@ describe("buildCustomHelp", () => {
 
   it("contains GitHub URL", () => {
     const help = buildCustomHelp("1.0.0");
-    expect(help).toContain("github.com/mahdy-gribkov/arcana");
+    expect(help).toContain("github.com/medy-gribkov/arcana");
   });
 
   it("contains ASCII banner", () => {

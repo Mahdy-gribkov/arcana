@@ -188,6 +188,28 @@ export function scanSkillContent(content: string): ScanIssue[] {
     }
   }
 
+  // Multi-line check: join lines ending with \ and re-scan
+  for (let i = 0; i < lines.length - 1; i++) {
+    const line = lines[i]!;
+    if (line.endsWith("\\")) {
+      const joined = line.slice(0, -1) + " " + (lines[i + 1] ?? "").trim();
+      for (const pattern of PATTERNS) {
+        if (pattern.regex.test(joined)) {
+          const alreadyFound = issues.some(iss => iss.line === i + 1 && iss.category === pattern.category);
+          if (!alreadyFound) {
+            issues.push({
+              level: pattern.level,
+              category: pattern.category,
+              detail: pattern.detail,
+              line: i + 1,
+              context: joined.trim().slice(0, 120),
+            });
+          }
+        }
+      }
+    }
+  }
+
   // Sort: critical first, then high, then medium
   const order = { critical: 0, high: 1, medium: 2 };
   issues.sort((a, b) => order[a.level] - order[b.level]);

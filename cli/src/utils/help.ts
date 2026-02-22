@@ -106,7 +106,7 @@ export function buildCustomHelp(version: string): string {
   lines.push("");
   lines.push(`  ${ui.dim("LEARN MORE")}`);
   lines.push(`    arcana <command> --help          ${ui.dim("Show help for a command")}`);
-  lines.push(`    ${ui.dim("https://github.com/mahdy-gribkov/arcana")}`);
+  lines.push(`    ${ui.dim("https://github.com/medy-gribkov/arcana")}`);
   lines.push("");
 
   return lines.join("\n");

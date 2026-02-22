@@ -2,11 +2,11 @@
   "name": "arcana",
   "owner": {
     "name": "Mahdy Gribkov",
-    "github": "mahdy-gribkov"
+    "github": "medy-gribkov"
   },
   "metadata": {
     "description": "Agent skills that work across AI coding tools",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "homepage": "https://mahdygribkov.vercel.app"
   },
   "plugins": [
@@ -61,7 +61,7 @@
     {
       "name": "code-reviewer",
       "source": "./skills/code-reviewer",
-      "description": "Use this skill to review code. It supports both local changes (staged or working tree)",
+      "description": "Code review workflow for local changes and remote PRs. Reviews focus on correctness, maintainability, security, and test coverage with concrete examples and inline comments.",
       "version": "1.0.1"
     },
     {
