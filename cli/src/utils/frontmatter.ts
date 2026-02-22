@@ -45,7 +45,7 @@ export function parseFrontmatter(raw: string): SkillFrontmatter | null {
     if (descMatch?.[1] !== undefined) {
       let value = descMatch[1].trim();
       // Handle YAML multiline: |, >, or bare indented continuation
-      if (value === "|" || value === ">" || value === "") {
+      if (value === "|" || value === ">" || value === "|-" || value === "|+" || value === ">-" || value === ">+" || value === "") {
         const multilineLines: string[] = [];
         for (let j = i + 1; j < lines.length; j++) {
           const next = lines[j];

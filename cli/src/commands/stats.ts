@@ -85,8 +85,8 @@ export async function statsCommand(opts: { json?: boolean }): Promise<void> {
   const totalSize = sessions.reduce((sum, s) => sum + s.sizeBytes, 0);
   const totalLines = sessions.reduce((sum, s) => sum + s.lines, 0);
   const avgLines = Math.round(totalLines / sessions.length);
-  // Rough token estimate: ~15 chars per token in JSONL (includes JSON overhead)
-  const estimatedTokens = Math.round(totalSize / 15);
+  // Rough token estimate: ~4 chars per token for LLM tokenizers
+  const estimatedTokens = Math.round(totalSize / 4);
 
   // Find unique projects
   const projects = new Set(sessions.map((s) => s.project));

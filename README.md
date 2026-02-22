@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@mahdy-gribkov/arcana"><img src="https://img.shields.io/npm/v/@mahdy-gribkov/arcana?style=for-the-badge&color=d4943a" alt="npm"/></a>
+  <a href="https://www.npmjs.com/package/@sporesec/arcana"><img src="https://img.shields.io/npm/v/@sporesec/arcana?style=for-the-badge&color=d4943a" alt="npm"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4943a?style=for-the-badge" alt="MIT"/></a>
   <a href="#skills"><img src="https://img.shields.io/badge/Skills-60-d4943a?style=for-the-badge" alt="Skills"/></a>
   <a href="#compatibility"><img src="https://img.shields.io/badge/Platforms-7-d4943a?style=for-the-badge" alt="Platforms"/></a>
@@ -24,13 +24,13 @@
 
 **Environment management.** `doctor` diagnoses issues. `clean` removes stale data. `stats` shows session analytics. `init` scaffolds config for 7 platforms. `validate` catches broken skills before they waste tokens.
 
-**Multi-platform.** Same skills work on Claude Code, Cursor, Codex CLI, Gemini CLI, Windsurf, Antigravity, and Aider.
+**Format-portable.** Skills are markdown. Any LLM can read them. Claude Code loads them natively. Other platforms get config scaffolding via `arcana init`.
 
 ## Quick Start
 
 ```bash
 # Install globally
-npm i -g @mahdy-gribkov/arcana
+npm i -g @sporesec/arcana
 
 # Install all 60 skills
 arcana install --all
@@ -41,7 +41,7 @@ arcana install golang-pro security-review typescript-advanced
 
 Or without installing:
 ```bash
-npx @mahdy-gribkov/arcana install --all
+npx @sporesec/arcana install --all
 ```
 
 Skills are installed to `~/.agents/skills/`, the standard location for all compatible tools.
@@ -160,23 +160,23 @@ All commands support `--json` for machine-readable output and respect `NO_COLOR`
 
 ## Compatibility
 
-All skills follow the open [Agent Skills standard](https://docs.anthropic.com/en/docs/agents/skills) (Anthropic, Oct 2025).
+Skills are plain markdown with YAML frontmatter. Claude Code loads them natively from `~/.agents/skills/`. Other platforms read them as project context after running `arcana init`.
 
-| Platform | Config File | Status |
-|----------|------------|--------|
-| Claude Code | `CLAUDE.md` | Fully supported |
-| Codex CLI | `AGENTS.md` | Supported |
-| Cursor AI | `.cursor/rules/` | Supported |
-| Gemini CLI | `GEMINI.md` | Supported |
-| Windsurf | `.windsurfrules` | Supported |
-| Antigravity | `GEMINI.md` | Supported |
-| Aider | `.aider.conf.yml` | Supported |
+| Platform | Config File | Integration |
+|----------|------------|-------------|
+| Claude Code | `CLAUDE.md` | Native skill loading |
+| Codex CLI | `AGENTS.md` | Config scaffold via `arcana init` |
+| Cursor AI | `.cursor/rules/` | Config scaffold via `arcana init` |
+| Gemini CLI | `GEMINI.md` | Config scaffold via `arcana init` |
+| Windsurf | `.windsurfrules` | Config scaffold via `arcana init` |
+| Antigravity | `AGENT.md` | Config scaffold via `arcana init` |
+| Aider | `.aider.conf.yml` | Config scaffold via `arcana init` |
 
 ## Support This Project
 
 I build and maintain these skills in my free time. If they save you time, consider supporting the project.
 
-- [GitHub Sponsors](https://github.com/sponsors/mahdy-gribkov)
+- [GitHub Sponsors](https://github.com/sponsors/medy-gribkov)
 - [Buy Me a Coffee](https://buymeacoffee.com/mahdygribkov)
 - [Ko-fi](https://ko-fi.com/mahdygribkov)
 

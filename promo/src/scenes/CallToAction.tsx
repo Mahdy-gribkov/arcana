@@ -45,7 +45,7 @@ export const CallToAction: React.FC = () => {
           border: `1px solid ${AMBER}`,
         }}
       >
-        npm i -g @mahdy-gribkov/arcana
+        npm i -g @sporesec/arcana
       </div>
 
       <div
@@ -56,7 +56,7 @@ export const CallToAction: React.FC = () => {
           color: DIM,
         }}
       >
-        github.com/mahdy-gribkov/arcana
+        github.com/medy-gribkov/arcana
       </div>
 
       <div

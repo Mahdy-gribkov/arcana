@@ -14,7 +14,7 @@ const DEFAULT_CONFIG: ArcanaConfig = {
     {
       name: "arcana",
       type: "github",
-      url: "mahdy-gribkov/arcana",
+      url: "medy-gribkov/arcana",
       enabled: true,
     },
   ],

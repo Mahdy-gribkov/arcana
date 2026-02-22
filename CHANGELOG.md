@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.3.0 (2026-03-01)
+
+Bug fixes, honest compatibility claims, and namespace rename.
+
+### Breaking
+- **Package renamed** from `@mahdy-gribkov/arcana` to `@sporesec/arcana`. Old package deprecated with pointer.
+
+### Bug Fixes
+- **Provider repo reference**: ArcanaProvider and default config now point to `medy-gribkov/arcana` (was `mahdy-gribkov`)
+- **Antigravity/Gemini collision**: `arcana init --tool all` no longer overwrites Gemini config with Antigravity. Antigravity now uses `AGENT.md`
+- **Token estimate**: Fixed 3.75x inflation in `stats` and `install` size warnings (was ~15 chars/token, now ~4)
+- **YAML multiline**: Frontmatter parser now handles `|-`, `|+`, `>-`, `>+` scalar indicators
+- **Path traversal**: Reject UNC paths (`\\server\share`, `//server/share`) in skill file extraction
+- **Security scanner**: Detect multi-line `curl | bash` patterns (lines joined by trailing `\`)
+- **Health check**: execSync commands validated against allowlist before execution
+
+### Documentation
+- **README**: Honest compatibility table. Claude Code = native, others = config scaffold via `arcana init`
+- **All references** updated from `mahdy-gribkov` to `medy-gribkov` / `@sporesec/arcana`
+- **marketplace.json**: Fixed truncated code-reviewer description
+
+---
+
 ## 2.2.0 (2026-02-22)
 
 Final polish release. All 60 skills enriched, CLI memory-aware, session history added.

@@ -745,12 +745,17 @@ async function checkHealth(): Promise<void> {
 
   if (fixAction !== "__skip") {
     const cmd = fixAction as string;
-    p.log.info(chalk.dim(`Running: ${cmd}`));
-    try {
-      const { execSync } = await import("node:child_process");
-      execSync(cmd, { stdio: "inherit" });
-    } catch {
-      // Non-zero exit expected for some commands
+    const SAFE_PREFIXES = ["arcana ", "git config "];
+    if (!SAFE_PREFIXES.some(pre => cmd.startsWith(pre))) {
+      p.log.warn(`Skipped unsafe command: ${cmd}`);
+    } else {
+      p.log.info(chalk.dim(`Running: ${cmd}`));
+      try {
+        const { execSync } = await import("node:child_process");
+        execSync(cmd, { stdio: "inherit" });
+      } catch {
+        // Non-zero exit expected for some commands
+      }
     }
     p.log.info(chalk.dim("Run health check again to verify."));
   }

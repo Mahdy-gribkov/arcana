@@ -6,7 +6,7 @@ If you find a security issue in Arcana, please report it responsibly.
 
 **Do not open a public issue.** Instead:
 
-1. Use [GitHub Security Advisories](https://github.com/mahdy-gribkov/arcana/security/advisories/new) to report privately.
+1. Use [GitHub Security Advisories](https://github.com/medy-gribkov/arcana/security/advisories/new) to report privately.
 2. Or email: mahdy@mahdygribkov.com
 
 Include:

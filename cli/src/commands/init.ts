@@ -157,7 +157,7 @@ const TOOL_FILES: Record<ToolName, { path: string | ((cwd: string) => string); t
   },
   codex: { path: "AGENTS.md", template: codexTemplate, label: "Codex CLI" },
   gemini: { path: "GEMINI.md", template: geminiTemplate, label: "Gemini CLI" },
-  antigravity: { path: "GEMINI.md", template: antigravityTemplate, label: "Antigravity" },
+  antigravity: { path: "AGENT.md", template: antigravityTemplate, label: "Antigravity" },
   windsurf: { path: ".windsurfrules", template: windsurfTemplate, label: "Windsurf" },
   aider: { path: ".aider.conf.yml", template: aiderTemplate, label: "Aider" },
 };
